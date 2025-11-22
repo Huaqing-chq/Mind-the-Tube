@@ -1,4 +1,4 @@
-const appKey = "你的PrimaryKey"; // 仅需这个
+const appKey = "4bcc8c57347e4f8494fa94351900d78b"; 
 
 const lineColors = {
   bakerloo: "#B36305",
@@ -46,3 +46,4 @@ async function loadStatus() {
 
 loadStatus();
 setInterval(loadStatus, 30000);
+
