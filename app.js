@@ -3,12 +3,9 @@ const TFL_API_URL_LINES = 'https://api.tfl.gov.uk/Line/Mode/tube/Status';
 const TFL_API_URL_DISRUPTIONS = 'https://api.tfl.gov.uk/StopPoint/Mode/tube/Disruption';
 const REFRESH_INTERVAL = 30000; // 30 秒 (毫秒)
 
-// --- 关键元素获取 ---
-// 脚本放在 body 底部，DOM 元素已存在，可以直接获取
-const statusContainer = document.getElementById('status-container');
-const loadingMessage = document.getElementById('loading-message');
-
-// 用于缓存全网的站点中断信息
+// 全局变量，将在 DOMContentLoaded 后赋值
+let statusContainer;
+let loadingMessage;
 let disruptedStationIds = null;
 
 // TfL 官方颜色映射
@@ -43,7 +40,7 @@ const TFL_LINE_NAMES_ZH = {
     'elizabeth-line': '伊丽莎白线 (Elizabeth)'
 };
 
-// 状态描述中文映射 (固定的)
+// 状态描述中文映射
 const TFL_STATUS_ZH = {
     'Good Service': '服务良好',
     'Minor Delays': '轻微延误',
@@ -103,9 +100,9 @@ async function fetchDisruptedStations() {
  * @description 获取并渲染所有线路的 *概览* 状态
  */
 async function fetchTubeStatus() {
-    // 检查元素是否在启动时被正确找到
+    // 此时 statusContainer 保证已找到
     if (!statusContainer) {
-        console.error("错误: 未找到 'status-container' 元素。");
+        console.error("错误: 'status-container' 元素丢失。");
         return;
     }
 
@@ -140,6 +137,7 @@ async function fetchTubeStatus() {
  * @description 渲染单条线路卡片 (概览)
  */
 function renderLine(line) {
+    // 确保 statusContainer 存在
     if (!statusContainer) return;
 
     const status = line.lineStatuses[0];
@@ -233,4 +231,8 @@ function renderStationList(stations, detailsDiv) {
     const validStations = stations.filter(s => s.stopType === 'NaptanMetroStation');
     
     validStations.forEach(station => {
-        const li = document.createElemen
+        const li = document.createElement('li');
+        li.className = 'station-item';
+
+        const stationName = station.commonName;
+     
