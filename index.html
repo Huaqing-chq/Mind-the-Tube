@@ -1,26 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1"> 
-  <title>London Underground — Live Status</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mind the Tube</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
   <header>
-    <div class="roundel">
-      <span class="bar">UNDERGROUND</span>
-    </div>
-    <h2>Real-time Tube Service Status</h2>
+    <h1>Mind the Tube</h1>
+    <p class="subtitle">Real-time London Underground Status</p>
   </header>
 
-  <main>
-    <div id="status-container" class="status-list"></div>
-  </main>
+  <main id="lines"></main>
 
   <footer>
-    Powered by TfL Unified API · Auto-refresh every 30s
+    <p>Powered by TfL Open Data — No official affiliation</p>
   </footer>
 
   <script src="app.js"></script>
