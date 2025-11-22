@@ -1,49 +1,72 @@
-const appKey = "4bcc8c57347e4f8494fa94351900d78b"; 
+// app.js — TfL Tube Status Viewer (no API key required)
 
-const lineColors = {
-  bakerloo: "#B36305",
-  central: "#EE2E24",
-  circle: "#FFD700",
-  district: "#007A33",
-  hammersmithcity: "#F4A9BE",
-  jubilee: "#868F98",
-  metropolitan: "#751056",
-  northern: "#000000",
-  piccadilly: "#0019A8",
-  victoria: "#0098D4",
-  waterloocity: "#76D0BD",
-  elizabeth: "#6950A1"
+const API_URL = "https://api.tfl.gov.uk/Line/Mode/tube/Status";
+
+// 伦敦地铁配色（官方线路色）
+const LINE_COLORS = {
+  "bakerloo": "#B36305",
+  "central": "#E32017",
+  "circle": "#FFD300",
+  "district": "#00782A",
+  "hammersmith-city": "#F3A9BB",
+  "jubilee": "#A0A5A9",
+  "metropolitan": "#9B0056",
+  "northern": "#000000",
+  "piccadilly": "#003688",
+  "victoria": "#0098D4",
+  "waterloo-city": "#95CDBA"
 };
 
+// DOM
+const container = document.getElementById("lines");
+
 async function loadStatus() {
-  const url = `https://api.tfl.gov.uk/Line/Mode/tube/Status?app_key=${appKey}`;
+  try {
+    const response = await fetch(API_URL, {
+      headers: { "Cache-Control": "no-cache" }
+    });
 
-  const res = await fetch(url);
-  const data = await res.json();
+    if (!response.ok) {
+      container.innerHTML = `<p class="error">TfL API Error ${response.status}</p>`;
+      return;
+    }
 
-  const container = document.getElementById("status-container");
+    const data = await response.json();
+    renderLines(data);
+  } catch (err) {
+    container.innerHTML = `<p class="error">Network Error: ${err}</p>`;
+  }
+}
+
+function renderLines(lines) {
   container.innerHTML = "";
 
-  data.forEach(line => {
-    const id = line.id.replace(/-/g, "");
+  lines.forEach(line => {
+    const id = line.id;
     const name = line.name;
-    const status = line.lineStatuses[0].statusSeverityDescription;
+    const status = line.lineStatuses[0]?.statusSeverityDescription || "Unknown";
+    const reason = line.lineStatuses[0]?.reason || "";
 
-    let statusClass = "status-good";
-    if (/Delay/i.test(status)) statusClass = "status-warning";
-    if (/Closed|Suspended/i.test(status)) statusClass = "status-bad";
+    const card = document.createElement("div");
+    card.className = "line-card";
 
-    const color = lineColors[id] || "#333";
+    // 线路色条
+    const color = LINE_COLORS[id] || "#666";
+    const bar = `<div class="line-bar" style="background:${color}"></div>`;
 
-    container.innerHTML += `
-      <div class="line-card" style="border-left-color:${color}">
-        <div class="line-name">${name}</div>
-        <div class="${statusClass}">${status}</div>
+    card.innerHTML = `
+      ${bar}
+      <div class="line-info">
+        <h2>${name}</h2>
+        <p class="status">${status}</p>
+        ${reason ? `<p class="reason">${reason}</p>` : ""}
       </div>
     `;
+
+    container.appendChild(card);
   });
 }
 
+// 自动刷新：30 秒一次
 loadStatus();
 setInterval(loadStatus, 30000);
-
