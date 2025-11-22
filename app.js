@@ -1,13 +1,10 @@
-// 注意：我们移除了 'DOMContentLoaded' 包裹。
-// index.html 中的 <script defer> 属性会确保 DOM 在此脚本运行前已准备就绪。
-
 // --- 配置 ---
 const TFL_API_URL_LINES = 'https://api.tfl.gov.uk/Line/Mode/tube/Status';
 const TFL_API_URL_DISRUPTIONS = 'https://api.tfl.gov.uk/StopPoint/Mode/tube/Disruption';
 const REFRESH_INTERVAL = 30000; // 30 秒 (毫秒)
 
 // --- 关键元素获取 ---
-// 脚本现在直接在顶层获取元素
+// 脚本放在 body 底部，DOM 元素已存在，可以直接获取
 const statusContainer = document.getElementById('status-container');
 const loadingMessage = document.getElementById('loading-message');
 
@@ -108,14 +105,9 @@ async function fetchDisruptedStations() {
 async function fetchTubeStatus() {
     // 检查元素是否在启动时被正确找到
     if (!statusContainer) {
-        console.error("错误: 未找到 'status-container' 元素。请检查 index.html。");
-        // 隐藏 loadingMessage (如果它被找到了的话)
-        if (loadingMessage) loadingMessage.style.display = 'none';
+        console.error("错误: 未找到 'status-container' 元素。");
         return;
     }
-
-    // 原始的 if 检查是多余的，因为 loadingMessage 默认可见。
-    // 我们会在 try/catch 块中处理它。
 
     try {
         const response = await fetch(TFL_API_URL_LINES);
@@ -126,13 +118,14 @@ async function fetchTubeStatus() {
         
         lines.sort((a, b) => a.name.localeCompare(b.name));
 
-        // 这是关键：清除容器，这会移除 "Loading..."
+        // 关键：清除容器，这会移除 "Loading..."
         statusContainer.innerHTML = '';
 
         lines.forEach(line => {
             renderLine(line);
         });
 
+        // 首次加载时，在后台获取中断信息
         if (disruptedStationIds === null) {
             fetchDisruptedStations();
         }
@@ -158,6 +151,7 @@ function renderLine(line) {
 
     let reasonHtml = '';
     if (status.reason) {
+        // 清理 HTML 标签，保留英文原因
         const cleanReason = status.reason.replace(/<[^>]*>?/gm, '');
         reasonHtml = `<p class="line-reason">${cleanReason}</p>`;
     }
@@ -195,8 +189,10 @@ async function toggleLineDetails(lineId) {
     const isExpanded = card.classList.toggle('expanded');
     const hasLoaded = detailsDiv.dataset.loaded === 'true';
 
+    // 仅在展开且未加载过时获取数据
     if (isExpanded && !hasLoaded) {
         try {
+            // 获取该线路的站点
             const response = await fetch(`https://api.tfl.gov.uk/Line/${lineId}/StopPoints`);
             if (!response.ok) {
                 throw new Error(`StopPoints API failed: ${response.status}`);
@@ -205,6 +201,7 @@ async function toggleLineDetails(lineId) {
             
             detailsDiv.dataset.loaded = 'true';
 
+            // 确保中断信息已加载
             if (disruptedStationIds === null) {
                 await fetchDisruptedStations();
             }
@@ -232,4 +229,8 @@ function renderStationList(stations, detailsDiv) {
     const list = document.createElement('ul');
     list.className = 'station-list';
 
-    const validStations = stations.filt
+    // 过滤掉非地铁站点的条目
+    const validStations = stations.filter(s => s.stopType === 'NaptanMetroStation');
+    
+    validStations.forEach(station => {
+        const li = document.createElemen
