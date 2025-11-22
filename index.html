@@ -1,13 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mind the Tube - 地铁实况</title>
+    <title>伦敦地铁实时状态 (Mind the Tube)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- 链接到外部 CSS 文件 -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,15 +14,15 @@
     <!-- 头部 -->
     <header class="app-header">
         <h1>Mind the Tube</h1>
-        <p>伦敦地铁实时运行状况</p>
+        <p>伦敦地铁实时状态 (Live London Underground Status)</p>
     </header>
 
     <!-- 主要内容区域 -->
     <main class="container">
         <div id="status-container">
-            <!-- 加载信息 -->
+            <!-- 加载信息 (初始时可见) -->
             <div id="loading-message" class="status-message">
-                Loading live status...
+                正在加载实时状态...
             </div>
             <!-- 状态卡片将由 JavaScript 注入到这里 -->
         </div>
@@ -31,15 +30,12 @@
 
     <!-- 尾部 -->
     <footer>
-        <p>由<a href="https://tfl.gov.uk/info-for/open-data-users/" target="_blank" rel="noopener noreferrer">伦敦交通局（TfL）开放API强力驱动</a>.
-        <br>这只是一个开放的独立项目，与伦敦交通局官方没有联系</p>
+        <p>数据来源：<a href="https://tfl.gov.uk/info-for/open-data-users/" target="_blank" rel="noopener noreferrer">TfL Open Data</a>.
+        <br>这是一个独立项目，不隶属于 TfL。</p>
     </footer>
 
-    <!-- 链接到外部 JavaScript 文件 -->
-    <!-- 'defer' 属性确保 DOM 加载完毕后再执行脚本 -->
-    <script src="app.js" defer></script>
+    <!-- 脚本部分: 放在 body 底部以确保 DOM 元素已加载 -->
+    <script src="app.js"></script>
 
 </body>
 </html>
-
-
