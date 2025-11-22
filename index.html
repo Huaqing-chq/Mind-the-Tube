@@ -34,8 +34,22 @@
         <br>这是一个独立项目，不隶属于 TfL。</p>
     </footer>
 
-    <!-- 脚本部分: 放在 body 底部以确保 DOM 元素已加载 -->
+    <!-- 1. 导入函数定义 (app.js) -->
     <script src="app.js"></script>
+
+    <!-- 2. 启动逻辑：内联执行，保证在 DOM 元素创建后立即启动 -->
+    <script>
+        // 确保 app.js 中的函数和变量已加载。
+        // 获取元素并将其赋值给 app.js 中的全局变量
+        window.statusContainer = document.getElementById('status-container');
+        window.loadingMessage = document.getElementById('loading-message');
+
+        // 启动数据获取和刷新
+        fetchTubeStatus(); 
+        setInterval(fetchTubeStatus, REFRESH_INTERVAL); 
+        setInterval(fetchDisruptedStations, REFRESH_INTERVAL);
+    </script>
 
 </body>
 </html>
+
