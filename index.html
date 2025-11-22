@@ -1,24 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mind the Tube</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mind the Tube - Live Status</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 链接到外部 CSS 文件 -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <header>
-    <h1>Mind the Tube</h1>
-    <p class="subtitle">Real-time London Underground Status</p>
-  </header>
+    <!-- 头部 -->
+    <header class="app-header">
+        <h1>Mind the Tube</h1>
+        <p>Live London Underground Status</p>
+    </header>
 
-  <main id="lines"></main>
+    <!-- 主要内容区域 -->
+    <main class="container">
+        <div id="status-container">
+            <!-- 加载信息 -->
+            <div id="loading-message" class="status-message">
+                Loading live status...
+            </div>
+            <!-- 状态卡片将由 JavaScript 注入到这里 -->
+        </div>
+    </main>
 
-  <footer>
-    <p>Powered by TfL Open Data — No official affiliation</p>
-  </footer>
+    <!-- 尾部 -->
+    <footer>
+        <p>Powered by <a href="https://tfl.gov.uk/info-for/open-data-users/" target="_blank" rel="noopener noreferrer">TfL Open Data</a>.
+        <br>This is an independent project and is not affiliated with TfL.</p>
+    </footer>
 
-  <script src="app.js"></script>
+    <!-- 链接到外部 JavaScript 文件 -->
+    <!-- 'defer' 属性确保 DOM 加载完毕后再执行脚本 -->
+    <script src="app.js" defer></script>
+
 </body>
 </html>
