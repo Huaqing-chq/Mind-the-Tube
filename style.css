@@ -215,3 +215,86 @@ main {
 [data-severity="Planned Closure"] { color: var(--planned-closure); }
 [data-severity="Suspended"] { color: var(--severe-delays); }
 [data-severity="Part Suspended"] { color: var(--severe-delays); }
+
+/* 7. 展开的卡片和站点列表 */
+
+.line-card {
+    /* 添加鼠标指针，表示可点击 */
+    cursor: pointer;
+}
+
+.line-details {
+    /* 默认隐藏站点列表 */
+    display: none;
+    padding: 1.25rem 0 0 0; /* 仅顶部内边距 */
+    margin-top: 1.25rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* 当卡片拥有 'expanded' 类时，显示详情 */
+.line-card.expanded .line-details {
+    display: block;
+}
+
+.loading-stations,
+.error-stations {
+    font-size: 0.95rem;
+    color: var(--footer-text);
+    padding: 0.5rem;
+}
+
+.error-stations {
+    color: var(--severe-delays);
+    font-weight: 500;
+}
+
+.station-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    /* 桌面端显示两列 */
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+/* 移动端显示一列 */
+@media (max-width: 600px) {
+    .station-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+.station-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* 使用稍暗的背景以区分 */
+    background-color: var(--bg-color);
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.station-name {
+    font-weight: 500;
+    font-size: 0.95rem;
+    /* 确保长站名可以换行 */
+    word-break: break-word;
+    padding-right: 0.5rem;
+}
+
+.station-status {
+    font-weight: 700;
+    font-size: 0.9rem;
+    flex-shrink: 0; /* 防止状态文本换行 */
+}
+
+/* 站点状态颜色 */
+.station-status.good {
+    color: var(--good-service);
+}
+
+.station-status.disrupted {
+    color: var(--severe-delays);
+}
