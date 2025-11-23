@@ -1,435 +1,590 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mind the Tube - 伦敦地铁运营实况</title>
-    <!-- 引入 Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* 引入 Inter 字体 */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-        
-        :root {
-            --font-family-sans: 'Inter', sans-serif;
-            --tfl-red: #c8003a;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mind the Tube — 实时伦敦地铁状态</title>
 
-        body {
-            font-family: var(--font-family-sans);
-            /* 确保 body 占据整个视口高度 */
-            min-height: 100vh;
-        }
+  <!-- Tailwind CDN (可选) -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-        /* --- 核心布局修复: 确保列表不被挤压 --- */
-        #app-container {
-            /* 设置最大宽度并居中 */
-            margin-left: auto;
-            margin-right: auto;
-            width: 100%;
-            /* 关键修复: 启用全高列布局 */
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+  <!-- 字体 -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 
-        #status-container {
-            /* 关键修复: 占据所有剩余垂直空间，并允许内部滚动 */
-            flex-grow: 1;
-            overflow-y: auto;
-            padding-bottom: 1rem; /* 确保底部与页脚之间有间距 */
-            -ms-overflow-style: none; /* IE and Edge */
-            scrollbar-width: none; /* Firefox */
-        }
+  <style>
+    :root{
+      --tfl-blue: #0019A8;
+      --tfl-red: #e60028;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --muted: #6b7280;
+    }
 
-        /* 隐藏 WebKit 浏览器的滚动条 */
-        #status-container::-webkit-scrollbar {
-            display: none;
-        }
-        /* --- 核心布局修复结束 --- */
+    /* 基础布局 */
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: var(--bg);
+      color: #111827;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
 
-        /* Loading Spinner */
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: var(--tfl-red);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
+    /* 容器：最大宽度并垂直伸展 */
+    #app-container{
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 18px;
+      display:flex;
+      flex-direction:column;
+      min-height:100vh;
+      box-sizing:border-box;
+    }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+    /* Header */
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding-bottom:12px;
+      border-bottom:4px solid #dc2626; /* 红色条，呼应 Roundel */
+    }
 
-        /* Dark Mode Spinner */
-        .dark .spinner {
-            border-color: rgba(255, 255, 255, 0.1);
-            border-left-color: var(--tfl-red);
-        }
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
 
-        /* Line Color Mapping (TfL Official Colors - 用于卡片左侧边框) */
-        .line-card {
-            border-left-width: 8px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition: box-shadow 0.3s ease-in-out;
-        }
-        .line-card:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        
-        /* Line Colors (TfL specific) */
-        .bakerloo { border-color: #B36305; }
-        .central { border-color: #E32017; }
-        .circle { border-color: #FFD300; }
-        .district { border-color: #00782A; }
-        .hammersmith-city { border-color: #F3A9A2; }
-        .jubilee { border-color: #A0A5A9; }
-        .metropolitan { border-color: #9B0056; }
-        .northern { border-color: #000000; }
-        .piccadilly { border-color: #003688; }
-        .victoria { border-color: #0098D4; }
-        .waterloo-city { border-color: #99D1C9; }
-        .elizabeth { border-color: #6950a1; }
-        .london-overground { border-color: #EE7D3A; }
+    .title {
+      font-weight:800;
+      font-size:20px;
+      letter-spacing:0.2px;
+    }
 
-        /* Status Backgrounds (用于状态芯片) */
-        .status-good { background-color: #d1fae5; color: #065f46; } /* Light Green */
-        .status-minor { background-color: #fef3c7; color: #92400e; } /* Light Yellow/Orange */
-        .status-severe, .status-partclosure, .status-closure { background-color: #fecaca; color: #991b1b; } /* Light Red */
-        .status-chip {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 600;
-            font-size: 0.75rem; /* text-xs */
-            white-space: nowrap;
-        }
+    .subtitle {
+      font-size:13px;
+      color:var(--muted);
+      margin-top:2px;
+    }
 
-        /* Dark Mode Adjustments */
-        .dark {
-            background-color: #111827; /* Tailwind gray-900 */
-        }
-        .dark .line-card {
-            background-color: #1f2937; /* Tailwind gray-800 !important;
-            box-shadow: 0 4px 6px -1px rgba(255, 255, 255, 0.05);
-        }
-        .dark .status-good { background-color: #047857; color: #ccfbf1; }
-        .dark .status-minor { background-color: #ca8a04; color: #fef9c3; }
-        .dark .status-severe, .dark .status-partclosure, .dark .status-closure { background-color: #b91c1c; color: #fecaca; }
-        .dark #header {
-            border-color: #dc2626; /* red-600 */
-        }
-    </style>
+    /* Roundel container（右侧） */
+    .roundel-wrap{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    /* Roundel SVG */
+    .roundel {
+      width:64px;
+      height:64px;
+      position:relative;
+      flex-shrink:0;
+    }
+
+    /* 内部蓝色条的文字轮换 */
+    .roundel .band {
+      position:absolute;
+      left:0;
+      right:0;
+      top:50%;
+      transform:translateY(-50%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:22px;
+      overflow:hidden;
+    }
+
+    .roundel .band .word {
+      display:block;
+      height:22px;
+      line-height:22px;
+      font-weight:500;
+      color:white;
+      padding:0 10px;
+      white-space:nowrap;
+      animation: slideWords 12s linear infinite;
+     
+    }
+
+    /* 每个 word 向上滚动，关键帧处理为 6 个词的循环（等分） */
+    @keyframes slideWords {
+      0% { transform: translateY(0); }
+      16.66% { transform: translateY(-22px); }
+      33.33% { transform: translateY(-44px); }
+      50% { transform: translateY(-66px); }
+      66.66% { transform: translateY(-88px); }
+      83.33% { transform: translateY(-110px); }
+      100% { transform: translateY(0); }
+    }
+
+    /* 主体（状态列表区域） */
+    main {
+      flex:1 1 auto;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      padding-top:18px;
+      padding-bottom:18px;
+      overflow:visible;
+    }
+
+    #status-container{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      overflow:auto;
+      padding-right:6px;
+    }
+
+    /* 卡片样式 */
+    .line-card{
+      display:flex;
+      flex-direction:column;
+      background:var(--card);
+      border-radius:10px;
+      padding:12px;
+      box-shadow:0 6px 18px rgba(15,23,42,0.06);
+      border-left:8px solid #333;
+      cursor:pointer;
+      transition:transform .12s ease, box-shadow .12s ease;
+    }
+    .line-card:hover{ transform: translateY(-3px); box-shadow:0 12px 30px rgba(15,23,42,0.08); }
+
+    .line-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .line-title{
+      font-weight:700;
+      font-size:16px;
+    }
+
+    .status-chip{
+      font-weight:700;
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      white-space:nowrap;
+    }
+
+    .status-good{ background:#d1fae5; color:#065f46; }
+    .status-minor{ background:#fff7ed; color:#92400e; }
+    .status-severe{ background:#fee2e2; color:#991b1b; }
+
+    .line-reason{
+      margin-top:8px;
+      color:#374151;
+      font-size:13px;
+    }
+
+    /* 站点展开面板 */
+    .stations-panel{
+      margin-top:10px;
+      border-radius:8px;
+      overflow:hidden;
+      border:1px dashed rgba(0,0,0,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,250,250,0.96));
+      padding:8px;
+    }
+
+    .station-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:8px;
+      border-bottom:1px solid rgba(15,23,42,0.03);
+    }
+    .station-row:last-child{ border-bottom:0; }
+
+    .station-name{ font-weight:600; color:#0f172a; }
+    .station-next{ font-size:13px; color:#374151; text-align:right; min-width:160px; }
+
+    /* Footer */
+    footer{
+      margin-top:12px;
+      padding-top:10px;
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
+    }
+
+    /* Loading / Error */
+    .loading {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      padding:18px;
+      color:var(--muted);
+    }
+
+    .spinner {
+      width:28px; height:28px;
+      border-radius:50%;
+      border:3px solid rgba(0,0,0,0.08);
+      border-left-color:var(--tfl-red);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background:#fef2f2;
+      color:#991b1b;
+      padding:10px;
+      border-radius:8px;
+      font-weight:600;
+    }
+
+    /* Responsive */
+    @media (max-width:640px){
+      .roundel { width:52px; height:52px; }
+      .line-title{ font-size:15px; }
+      .station-next{ min-width:120px; font-size:12px; }
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg: #0b1220;
+        --card: #0f1724;
+        --muted: #9ca3af;
+      }
+      body{ background: var(--bg); color:#e6eef8;}
+      header{ border-bottom-color:#dc2626;}
+      .line-card{ background: linear-gradient(180deg,#0b1224,#0c1528); box-shadow: 0 6px 20px rgba(2,6,23,0.6);}
+      .line-reason{ color:#cbd5e1;}
+      .stations-panel{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03);}
+    }
+
+    /* Line color utility classes (left border) */
+    .border-bakerloo { border-left-color: #B36305; }
+    .border-central { border-left-color: #E32017; }
+    .border-circle { border-left-color: #FFD300; }
+    .border-district { border-left-color: #00782A; }
+    .border-hammersmith-city { border-left-color: #F3A9A2; }
+    .border-jubilee { border-left-color: #A0A5A9; }
+    .border-metropolitan { border-left-color: #9B0056; }
+    .border-northern { border-left-color: #000000; }
+    .border-piccadilly { border-left-color: #003688; }
+    .border-victoria { border-left-color: #0098D4; }
+    .border-waterloo-city { border-left-color: #99D1C9; }
+    .border-elizabeth { border-left-color: #6950a1; }
+    .border-london-overground { border-left-color: #EE7D3A; }
+
+.tag-og {
+  background: #EE7D3A;   /* Overground 橙色 */
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  margin-left: 6px;
+  border-radius: 4px;
+}
+
+.tag-nr {
+  background: #D40000;   /* National Rail 红色 */
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  margin-left: 6px;
+  border-radius: 4px;
+}
+
+  </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-
-    <!-- App Container: Full height flexible column -->
-    <div id="app-container" class="max-w-xl p-4 sm:p-6">
-
-        <!-- Header (Fixed Height) -->
-        <header id="header" class="flex-shrink-0 mb-6 pb-2 border-b-4 border-red-700 dark:border-red-500 transition-colors duration-300">
-            <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white">Mind the Tube</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Live London Underground Status</p>
-        </header>
-
-        <!-- Status Container (Flexible Height - Fixes Squeezing Issue) -->
-        <!-- 此容器使用 flex-grow 占据所有剩余空间，并支持独立滚动 -->
-        <main id="status-container" class="space-y-4">
-            <!-- Loading and status cards will be injected here by JavaScript -->
-            <div id="loading-indicator" class="text-center p-8">
-                <div class="spinner"></div>
-                <p class="text-gray-500 dark:text-gray-400 mt-3">Fetching live status from TfL...</p>
-            </div>
-            <div id="error-message" class="hidden text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900 p-4 rounded-lg shadow-md border border-red-300">
-                <p class="font-bold mb-1">❌ 获取失败</p>
-                <p id="error-text">Could not load real-time data. Please check your network connection or try again later.</p>
-            </div>
-        </main>
-
-        <!-- Footer (Fixed Height) -->
-        <footer id="footer" class="flex-shrink-0 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center text-xs text-gray-500 dark:text-gray-400">
-            <p>Data provided by Transport for London (TfL) Open Data. (Real Data via TfL API)</p>
-            <p>Last Updated: <span id="last-updated">--:--</span></p>
-        </footer>
-    </div>
-
-    <!-- Station Detail Modal (Copied from previous response for completeness) -->
-    <div id="station-detail-modal" class="hidden fixed inset-0 z-50 bg-gray-900 bg-opacity-75 flex items-center justify-center">
-        <div id="modal-content" class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 transition-transform transition-opacity">
-            <div class="flex justify-between items-center mb-6 border-b pb-3 border-gray-200 dark:border-gray-700">
-                <h2 id="modal-title" class="text-2xl font-bold text-gray-800 dark:text-white">站点状态</h2>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-            
-            <div id="station-list-container" class="max-h-96 overflow-y-auto pr-2">
-                <div class="p-4 text-center text-gray-500 font-medium dark:text-gray-400">正在获取数据...</div>
-            </div>
-
-            <div class="mt-6 text-center">
-                <button onclick="closeModal()" class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-300">
-                    返回
-                </button>
-            </div>
+<body>
+  <div id="app-container">
+    <header>
+      <div class="brand">
+        <div>
+          <div class="title">Mind the Tube</div>
+          <div class="subtitle">Live London Underground Status</div>
         </div>
-    </div>
-    
-    <script>
-        // --- Configuration ---
-        const API_KEY = '4bcc8c57347e4f8494fa94351900d78b';
-        // 注意：TfL API 通常需要 app_id 和 app_key。我们假设此密钥作为 app_key 使用。
-        const BASE_API_URL = 'https://api.tfl.gov.uk/Line/Mode/tube/Status';
-        const REFRESH_INTERVAL = 30000; // 30 seconds
+      </div>
 
-        // 线路 ID 到 CSS 类的映射 (用于边框颜色)
-        const LINE_ID_MAP = {
-            'bakerloo': 'bakerloo', 'central': 'central', 'circle': 'circle',
-            'district': 'district', 'hammersmith-city': 'hammersmith-city', 'jubilee': 'jubilee',
-            'metropolitan': 'metropolitan', 'northern': 'northern', 'piccadilly': 'piccadilly',
-            'victoria': 'victoria', 'waterloo-city': 'waterloo-city', 'elizabeth': 'elizabeth',
-            'london-overground': 'london-overground'
-        };
+      <!-- Roundel：右上角动态轮换站名 -->
+      <div class="roundel-wrap" aria-hidden="true">
+        <!-- SVG 圆环 -->
+        <div class="roundel" role="img" aria-label="London Underground">
+          <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="display:block;">
+            <!-- 红圈 -->
+            <circle cx="50" cy="50" r="36" stroke="#e60028" stroke-width="12" fill="white"></circle>
+            <!-- 蓝条（放置文字的背景） -->
+            <rect x="6" y="40" width="88" height="20" rx="3" ry="3" fill="#0019A8"></rect>
+          </svg>
+          <!-- 文字轮换层（通过 CSS 动画向上滑动） -->
+          <div class="band" style="left:6px; right:6px;">
+            <div class="word">UNDERGROUND</div>
+            <div class="word">KING'S CROSS</div>
+            <div class="word">PADDINGTON</div>
+            <div class="word">PICCADILLY CIRCUS</div>
+            <div class="word">WATERLOO</div>
+            <div class="word">OXFORD CIRCUS</div>
+          </div>
+        </div>
+      </div>
+    </header>
 
-        // --- DOM Elements ---
-        const statusContainer = document.getElementById('status-container');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const errorMessage = document.getElementById('error-message');
-        const errorText = document.getElementById('error-text');
-        const lastUpdatedSpan = document.getElementById('last-updated');
+    <main>
+      <!-- 状态列表容器 -->
+      <section id="status-container" aria-live="polite">
+        <!-- 初始加载展示 -->
+        <div id="loading" class="loading">
+          <div class="spinner" aria-hidden="true"></div>
+          <div>Fetching live status from TfL...</div>
+        </div>
 
-        // Modal Elements
-        const modal = document.getElementById('station-detail-modal');
-        const modalContent = document.getElementById('modal-content');
-        const modalTitle = document.getElementById('modal-title');
-        const stationListContainer = document.getElementById('station-list-container');
-        let isModalOpen = false;
+        <!-- 错误提示（隐藏后由 JS 控制显示） -->
+        <div id="error" class="error-box" style="display:none;"></div>
 
-        // --- Mock Data (用于 API 失败时的回退/Fallback) ---
-        const mockLineStatus = [
-            { id: 'victoria', name: 'Victoria', lineStatuses: [{ statusSeverityDescription: 'Good Service', statusSeverity: 10, reason: null }] },
-            { id: 'central', name: 'Central', lineStatuses: [{ statusSeverityDescription: 'Minor Delays', statusSeverity: 9, reason: '信号故障导致轻微延误' }] },
-            { id: 'northern', name: 'Northern', lineStatuses: [{ statusSeverityDescription: 'Part Closure', statusSeverity: 6, reason: 'High Barnet to Finchley Central - Service closed' }] },
-            { id: 'jubilee', name: 'Jubilee', lineStatuses: [{ statusSeverityDescription: 'Good Service', statusSeverity: 10, reason: null }] },
-            { id: 'piccadilly', name: 'Piccadilly', lineStatuses: [{ statusSeverityDescription: 'Severe Delays', statusSeverity: 3, reason: 'Staff sickness causing severe disruption' }] },
-        ];
+        <!-- 线路卡片将由 JS 插入到这里 -->
+      </section>
+    </main>
 
-        // Mock Disrupted Station IDs (站点详情功能仍使用模拟数据，因为 API 密钥仅支持线路状态)
-        const disruptedStationIds = new Set([
-            '940GZZLUBBN', // Bank
-            '940GZZLUOXC', // Oxford Circus (on Central & Victoria)
-            '940GZZLUWLO', // Waterloo (on Northern & Jubilee)
-            '940GZZLUAMS', // Amersham (on Metropolitan)
-        ]);
+    <footer>
+      开放数据来源于伦敦交通局（TfL） · 我们与TfL没有从属关系
+      <div style="margin-top:6px; font-size:12px; color:var(--muted)">Last updated: <span id="last-updated">--:--</span></div>
+    </footer>
+  </div>
 
-        // Mock StopPoints (站点详情功能仍使用模拟数据)
-        const mockStopPoints = {
-            'victoria': [
-                { id: '940GZZLUVIC', commonName: 'Victoria' },
-                { id: '940GZZLUOXC', commonName: 'Oxford Circus' }, // Disrupted
-                { id: '940GZZLUEUS', commonName: 'Euston' },
-                { id: '940GZZLUWLO', commonName: 'Waterloo' }, // Disrupted
-            ],
-            'central': [
-                { id: '940GZZLUSWC', commonName: 'South Woodford' },
-                { id: '940GZZLUOXC', commonName: 'Oxford Circus' }, // Disrupted
-                { id: '940GZZLUBNK', commonName: 'Bank' }, // Disrupted
-                { id: '940GZZLULIV', commonName: 'Liverpool Street' },
-            ],
-            // Add more mock data here for other lines if needed
-        };
-        // --- End Mock Data ---
+<script>
+/* -----------------------------------------------------
+   TfL 实时线路 + 站点到站信息主程序
+   单文件版本 — Mind the Tube
+----------------------------------------------------- */
 
-        /**
-         * 获取线路状态对应的 CSS 状态类
-         * @param {number} severity 状态严重性等级 (1-10)
-         * @returns {string} Tailwind CSS 类
-         */
-        function getStatusClass(severity, description) {
-            const desc = description.toLowerCase();
-            if (desc.includes('closure') || desc.includes('severe')) {
-                return 'status-severe';
-            }
-            if (severity === 10 || desc.includes('good')) {
-                return 'status-good';
-            }
-            if (severity >= 7) {
-                return 'status-minor';
-            }
-            return 'status-severe'; // 默认严重延迟或关闭
+document.addEventListener("DOMContentLoaded", () => {
+
+  const API_BASE = "https://api.tfl.gov.uk";
+  const statusContainer = document.getElementById("status-container");
+  const loadingBox = document.getElementById("loading");
+  const errorBox = document.getElementById("error");
+  const lastUpdated = document.getElementById("last-updated");
+
+  /* 线路颜色映射用于设置卡片左侧颜色条 */
+  const LINE_COLORS = {
+    bakerloo: "#B36305",
+    central: "#E32017",
+    circle: "#FFD300",
+    district: "#00782A",
+    "hammersmith-city": "#F3A9A2",
+    jubilee: "#A0A5A9",
+    metropolitan: "#9B0056",
+    northern: "#000000",
+    piccadilly: "#003688",
+    victoria: "#0098D4",
+    "waterloo-city": "#99D1C9",
+    elizabeth: "#6950a1",
+    "london-overground": "#EE7D3A"
+  };
+  
+  const LINE_NAMES_ZH = {
+  "bakerloo": "贝克卢线",
+  "central": "中央线",
+  "circle": "环线",
+  "district": "区域线",
+  "hammersmith-city": "哈默史密斯及城市线",
+  "jubilee": "银禧线",
+  "metropolitan": "大都会线",
+  "northern": "北线",
+  "piccadilly": "皮卡迪利线",
+  "victoria": "维多利亚线",
+  "waterloo-city": "滑铁卢及城市线",
+  "elizabeth": "伊丽莎白线",
+  "london-overground": "伦敦地上铁"
+};
+
+  /* 状态 → Chip 颜色分类 */
+  function severityToClass(severity) {
+    if (!severity) return "status-good";
+    severity = severity.toLowerCase();
+
+    if (severity.includes("good")) return "status-good";
+    if (severity.includes("minor")) return "status-minor";
+    if (severity.includes("severe") || severity.includes("suspended")) return "status-severe";
+
+    return "status-minor";
+  }
+
+  /* ---------------------------
+      主请求：获取所有线路状态
+  --------------------------- */
+  async function loadLineStatus() {
+    try {
+      loadingBox.style.display = "flex";
+      errorBox.style.display = "none";
+
+      const url = `${API_BASE}/Line/Mode/tube,overground,elizabeth-line/Status`;
+      const res = await fetch(url, { cache: "no-cache" });
+
+      if (!res.ok) throw new Error("TfL API returned " + res.status);
+
+      const lines = await res.json();
+      renderLineCards(lines);
+
+      loadingBox.style.display = "none";
+      lastUpdated.textContent = new Date().toLocaleTimeString();
+
+    } catch (err) {
+      loadingBox.style.display = "none";
+      errorBox.textContent = "Error fetching line status: " + err.message;
+      errorBox.style.display = "block";
+    }
+  }
+
+  /* ---------------------------
+     渲染线路卡片
+  --------------------------- */
+  function renderLineCards(lines) {
+    /* 清空旧卡片 */
+    const oldCards = statusContainer.querySelectorAll(".line-card");
+    oldCards.forEach(x => x.remove());
+
+    lines.forEach(line => {
+      const id = line.id;
+      const name = LINE_NAMES_ZH[id] || line.name;
+      const status = line.lineStatuses?.[0]?.statusSeverityDescription ?? "Unknown";
+      const reason = line.lineStatuses?.[0]?.reason ?? "";
+
+      const color = LINE_COLORS[id] || "#333";
+      const severityClass = severityToClass(status);
+
+      /* 创建卡片 */
+      const card = document.createElement("div");
+      card.className = `line-card border-${id}`;
+      card.style.borderLeftColor = color;
+
+      card.innerHTML = `
+        <div class="line-head">
+          <div class="line-title">
+  ${name}
+  ${id === "london-overground" ? "<span class='tag-og'>OG</span>" : ""}
+  ${id === "national-rail" ? "<span class='tag-nr'>NR</span>" : ""}
+</div>
+          <div class="status-chip ${severityClass}">${status}</div>
+        </div>
+        ${reason ? `<div class="line-reason">${reason}</div>` : ""}
+      `;
+
+      /* 点击展开站点 */
+      card.addEventListener("click", () => toggleStations(id, card));
+
+      statusContainer.appendChild(card);
+    });
+  }
+
+  /* ---------------------------------------------------
+     点击线路 → 加载/折叠站点列表
+  --------------------------------------------------- */
+  async function toggleStations(lineId, cardEl) {
+    const existing = cardEl.querySelector(".stations-panel");
+
+    // 如果已经打开 → 折叠
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    // 显示加载提示
+    const panel = document.createElement("div");
+    panel.className = "stations-panel";
+    panel.innerHTML = `
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>Loading stations...</div>
+      </div>
+    `;
+    cardEl.appendChild(panel);
+
+    try {
+      /* 获取线路的 StopPoints（站点列表） */
+      const url = `${API_BASE}/Line/${lineId}/StopPoints`;
+      const res = await fetch(url, { cache: "no-cache" });
+
+      if (!res.ok) throw new Error("Failed loading stations");
+
+      const stations = await res.json();
+
+      /* 渲染站点 */
+      renderStations(stations, panel);
+
+    } catch (err) {
+      panel.innerHTML = `<div class="error-box">Error loading stations: ${err.message}</div>`;
+    }
+  }
+
+  /* -------------------------------
+       渲染站点列表 + 到站预测
+  ------------------------------- */
+  function renderStations(stations, panel) {
+    panel.innerHTML = "";
+
+    stations.forEach(stop => {
+      const row = document.createElement("div");
+      row.className = "station-row";
+
+      row.innerHTML = `
+        <div class="station-name">${stop.commonName}</div>
+        <div class="station-next" data-id="${stop.id}">
+          <span class="muted">Loading...</span>
+        </div>
+      `;
+
+      panel.appendChild(row);
+
+      /* 获取每个站点的到站预测（节流） */
+      loadStationArrivals(stop.id, row.querySelector(".station-next"));
+    });
+  }
+
+  /* -------------------------------
+        获取某站点到站预测
+  ------------------------------- */
+  let arrivalQueue = Promise.resolve(); // 让请求串行，避免 429
+
+  function loadStationArrivals(stopId, el) {
+    arrivalQueue = arrivalQueue.then(async () => {
+      try {
+        const url = `${API_BASE}/StopPoint/${stopId}/Arrivals`;
+        const res = await fetch(url, { cache: "no-cache" });
+
+        if (!res.ok) throw new Error("API " + res.status);
+
+        const trains = await res.json();
+
+        if (trains.length === 0) {
+          el.textContent = "No data";
+          return;
         }
 
-        /**
-         * 渲染初始的线路状态卡片
-         * @param {Array} data 线路状态数据
-         */
-        function renderLineCards(data) {
-            // 清空旧内容
-            statusContainer.innerHTML = ''; 
+        // 找到最早到站的 Train
+        const soonest = trains.sort((a, b) => a.timeToStation - b.timeToStation)[0];
+        const minutes = Math.round(soonest.timeToStation / 60);
 
-            data.forEach(line => {
-                // TfL API 数据的结构是 lineStatuses 数组，取第一个状态
-                const status = line.lineStatuses && line.lineStatuses.length > 0 ? line.lineStatuses[0] : { statusSeverityDescription: 'Unknown Status', statusSeverity: 0, reason: null };
-                
-                const lineClass = LINE_ID_MAP[line.id] || 'northern'; // Default to Northern/Black if not found
-                const statusClass = getStatusClass(status.statusSeverity, status.statusSeverityDescription);
-                
-                const cardHtml = `
-                    <div class="line-card p-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300 shadow-lg cursor-pointer ${lineClass}"
-                         data-line-id="${line.id}"
-                         onclick="fetchStationStatus('${line.id}', '${line.name}')">
-                        <div class="flex justify-between items-start">
-                            <h3 class="text-lg font-bold">${line.name} Line</h3>
-                            <span class="status-chip ${statusClass}">
-                                ${status.statusSeverityDescription}
-                            </span>
-                        </div>
-                        ${status.reason ? `<p class="text-sm text-gray-600 dark:text-gray-400 mt-2">${status.reason}</p>` : ''}
-                    </div>
-                `;
-                statusContainer.insertAdjacentHTML('beforeend', cardHtml);
-            });
-            
-            // 更新最后刷新时间
-            lastUpdatedSpan.textContent = new Date().toLocaleTimeString();
-        }
+        el.innerHTML = `
+          <div>${minutes} min</div>
+          <div>${soonest.destinationName.replace(" Underground Station","")}</div>
+        `;
 
+      } catch (err) {
+        el.textContent = "Error";
+      }
+    });
+  }
 
-        /**
-         * 获取线路状态 (使用 TfL API 实时获取数据)
-         */
-        async function fetchLineStatuses() {
-   // 确保加载指示器可见
-            loadingIndicator.classList.remove('hidden');
-            errorMessage.classList.add('hidden');
-            statusContainer.innerHTML = ''; // 清空旧内容
+  /* 60 秒刷新一次线路状态 */
+  loadLineStatus();
+  setInterval(loadLineStatus, 60000);
 
-            try {
-                const fetchUrl = `${BASE_API_URL}?app_key=${API_KEY}`;
-                
-                const response = await fetch(fetchUrl);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+});
+</script>
 
-                const data = await response.json();
-                
-                // TfL API 返回一个线路数组，直接传递给渲染函数
-                renderLineCards(data); 
-
-            } catch (error) {
-                console.error("加载线路状态失败:", error);
-                errorText.textContent = `无法加载实时数据。错误信息: ${error.message}. 正在使用模拟数据作为回退。`;
-                errorMessage.classList.remove('hidden');
-                
-                // 回退到模拟数据
-                renderLineCards(mockLineStatus); 
-            } finally {
-                // 无论成功还是失败，都隐藏加载指示器
-                loadingIndicator.classList.add('hidden');
-            }
-        }
-
-        /**
-         * 处理线路卡片点击事件：获取站点列表和中断信息，并进行对比。
-         * 注意：此功能目前仍使用模拟数据 (mockStopPoints/disruptedStationIds)，因为未提供查询站点信息的 API 密钥。
-         * @param {string} lineId 线路ID (e.g., 'victoria')
-         * @param {string} lineName 线路名称 (e.g., 'Victoria')
-         */
-        async function fetchStationStatus(lineId, lineName) {
-            modalTitle.innerHTML = `${lineName} 站点状态 <span class="text-sm font-normal text-gray-500 dark:text-gray-400">(正在加载...)</span>`;
-            stationListContainer.innerHTML = `<div class="p-4 text-center text-gray-500 font-medium dark:text-gray-400">正在获取数据...</div>`;
-            openModal();
-
-            try {
-                // 模拟 API 延迟和数据获取
-                await new Promise(resolve => setTimeout(resolve, 800)); 
-
-                const lineStopPoints = mockStopPoints[lineId] || [];
-                
-                // 交叉对比逻辑：检查该线路上是否有站点ID在全局中断列表中
-                const stationStatuses = lineStopPoints.map(station => {
-                    const isDisrupted = disruptedStationIds.has(station.id);
-                    let statusText = '服务良好 (Good Service)';
-                    let statusColor = 'text-green-600 dark:text-green-400';
-
-                    if (isDisrupted) {
-                        statusText = '服务中断 (Service Disruption)';
-                        statusColor = 'text-red-600 dark:text-red-400 font-bold';
-                    }
-
-                    return {
-                        name: station.commonName,
-                        status: statusText,
-                        color: statusColor
-                    };
-                }).sort((a, b) => a.name.localeCompare(b.name)); // 按站名排序
-
-                renderStationDetails(lineName, stationStatuses);
-
-            } catch (error) {
-                console.error(`获取 ${lineName} 站点状态失败:`, error);
-                modalTitle.innerHTML = `${lineName} 站点状态`;
-                stationListContainer.innerHTML = `<div class="p-4 text-center text-red-500 font-medium dark:text-red-400">加载站点详情失败。</div>`;
-            }
-        }
-
-        /**
-         * 渲染站点状态详情列表
-         */
-        function renderStationDetails(lineName, stations) {
-            modalTitle.textContent = `${lineName} 站点状态`;
-            
-            if (stations.length === 0) {
-                stationListContainer.innerHTML = `<div class="p-4 text-center text-gray-500 dark:text-gray-400">该线路暂无站点信息（模拟数据）。</div>`;
-                return;
-            }
-
-            let listHtml = `<ul class="space-y-3">`;
-            stations.forEach(station => {
-                listHtml += `
-                    <li class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <span class="text-gray-700 dark:text-gray-200 font-medium">${station.name}</span>
-                        <span class="${station.color} text-sm font-semibold">${station.status}</span>
-                    </li>
-                `;
-            });
-            listHtml += `</ul>`;
-            stationListContainer.innerHTML = listHtml;
-        }
-
-        /**
-         * 显示详情模态框
-         */
-        function openModal() {
-            isModalOpen = true;
-            modal.classList.remove('hidden');
-        }
-
-        /**
-         * 隐藏详情模态框
-         */
-        function closeModal() {
-            isModalOpen = false;
-            modal.classList.add('hidden');
-        }
-
-        // --- 初始化加载 ---
-        window.onload = () => {
-            fetchLineStatuses();
-            // 设置定时刷新（如果使用真实 API）
-            // setInterval(fetchLineStatuses, REFRESH_INTERVAL); 
-        };
-
-        // 绑定 ESC 键关闭模态框
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && isModalOpen) {
-                closeModal();
-            }
-        });
-    </script>
 </body>
 </html>
