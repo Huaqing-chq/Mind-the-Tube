@@ -5,10 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mind the Tube — 实时伦敦地铁状态</title>
 
-  <!-- Tailwind CDN (可选) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- 字体 -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 
   <style>
@@ -279,24 +277,23 @@
     .border-elizabeth { border-left-color: #6950a1; }
     .border-london-overground { border-left-color: #EE7D3A; }
 
-.tag-og {
-  background: #EE7D3A;   /* Overground 橙色 */
-  color: white;
-  font-size: 11px;
-  padding: 2px 6px;
-  margin-left: 6px;
-  border-radius: 4px;
-}
+    .tag-og {
+      background: #EE7D3A;   /* Overground 橙色 */
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      margin-left: 6px;
+      border-radius: 4px;
+    }
 
-.tag-nr {
-  background: #D40000;   /* National Rail 红色 */
-  color: white;
-  font-size: 11px;
-  padding: 2px 6px;
-  margin-left: 6px;
-  border-radius: 4px;
-}
-
+    .tag-nr {
+      background: #D40000;   /* National Rail 红色 */
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      margin-left: 6px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
@@ -309,17 +306,12 @@
         </div>
       </div>
 
-      <!-- Roundel：右上角动态轮换站名 -->
       <div class="roundel-wrap" aria-hidden="true">
-        <!-- SVG 圆环 -->
         <div class="roundel" role="img" aria-label="London Underground">
           <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="display:block;">
-            <!-- 红圈 -->
             <circle cx="50" cy="50" r="36" stroke="#e60028" stroke-width="12" fill="white"></circle>
-            <!-- 蓝条（放置文字的背景） -->
             <rect x="6" y="40" width="88" height="20" rx="3" ry="3" fill="#0019A8"></rect>
           </svg>
-          <!-- 文字轮换层（通过 CSS 动画向上滑动） -->
           <div class="band" style="left:6px; right:6px;">
             <div class="word">UNDERGROUND</div>
             <div class="word">KING'S CROSS</div>
@@ -333,19 +325,15 @@
     </header>
 
     <main>
-      <!-- 状态列表容器 -->
       <section id="status-container" aria-live="polite">
-        <!-- 初始加载展示 -->
         <div id="loading" class="loading">
           <div class="spinner" aria-hidden="true"></div>
           <div>Fetching live status from TfL...</div>
         </div>
 
-        <!-- 错误提示（隐藏后由 JS 控制显示） -->
         <div id="error" class="error-box" style="display:none;"></div>
 
-        <!-- 线路卡片将由 JS 插入到这里 -->
-      </section>
+        </section>
     </main>
 
     <footer>
@@ -356,8 +344,8 @@
 
 <script>
 /* -----------------------------------------------------
-   TfL 实时线路 + 站点到站信息主程序
-   单文件版本 — Mind the Tube
+   TfL 实时线路 + 站点到站信息主程序 (优化版)
+   解决 429 错误的逻辑：每次点击只发2个请求
 ----------------------------------------------------- */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -368,7 +356,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorBox = document.getElementById("error");
   const lastUpdated = document.getElementById("last-updated");
 
-  /* 线路颜色映射用于设置卡片左侧颜色条 */
+  // 本地缓存：用于存储各条线路的站点列表，避免重复请求静态数据
+  const stationCache = {};
+
   const LINE_COLORS = {
     bakerloo: "#B36305",
     central: "#E32017",
@@ -386,20 +376,20 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   
   const LINE_NAMES_ZH = {
-  "bakerloo": "贝克卢线",
-  "central": "中央线",
-  "circle": "环线",
-  "district": "区域线",
-  "hammersmith-city": "哈默史密斯及城市线",
-  "jubilee": "银禧线",
-  "metropolitan": "大都会线",
-  "northern": "北线",
-  "piccadilly": "皮卡迪利线",
-  "victoria": "维多利亚线",
-  "waterloo-city": "滑铁卢及城市线",
-  "elizabeth": "伊丽莎白线",
-  "london-overground": "伦敦地上铁"
-};
+    "bakerloo": "贝克卢线",
+    "central": "中央线",
+    "circle": "环线",
+    "district": "区域线",
+    "hammersmith-city": "哈默史密斯及城市线",
+    "jubilee": "银禧线",
+    "metropolitan": "大都会线",
+    "northern": "北线",
+    "piccadilly": "皮卡迪利线",
+    "victoria": "维多利亚线",
+    "waterloo-city": "滑铁卢及城市线",
+    "elizabeth": "伊丽莎白线",
+    "london-overground": "伦敦地上铁"
+  };
 
   /* 状态 → Chip 颜色分类 */
   function severityToClass(severity) {
@@ -443,7 +433,9 @@ document.addEventListener("DOMContentLoaded", () => {
      渲染线路卡片
   --------------------------- */
   function renderLineCards(lines) {
-    /* 清空旧卡片 */
+    /* 清空旧卡片，注意不要清除展开状态最好的做法是全重绘或Diff，
+       这里为了简单直接重绘，但体验上会折叠已打开的卡片。
+       (根据需求只保留最基础功能) */
     const oldCards = statusContainer.querySelectorAll(".line-card");
     oldCards.forEach(x => x.remove());
 
@@ -464,10 +456,10 @@ document.addEventListener("DOMContentLoaded", () => {
       card.innerHTML = `
         <div class="line-head">
           <div class="line-title">
-  ${name}
-  ${id === "london-overground" ? "<span class='tag-og'>OG</span>" : ""}
-  ${id === "national-rail" ? "<span class='tag-nr'>NR</span>" : ""}
-</div>
+            ${name}
+            ${id === "london-overground" ? "<span class='tag-og'>OG</span>" : ""}
+            ${id === "national-rail" ? "<span class='tag-nr'>NR</span>" : ""}
+          </div>
           <div class="status-chip ${severityClass}">${status}</div>
         </div>
         ${reason ? `<div class="line-reason">${reason}</div>` : ""}
@@ -481,7 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* ---------------------------------------------------
-     点击线路 → 加载/折叠站点列表
+     点击线路 → 优化后的加载逻辑 (2次请求搞定全线)
   --------------------------------------------------- */
   async function toggleStations(lineId, cardEl) {
     const existing = cardEl.querySelector(".stations-panel");
@@ -498,86 +490,119 @@ document.addEventListener("DOMContentLoaded", () => {
     panel.innerHTML = `
       <div class="loading">
         <div class="spinner"></div>
-        <div>Loading stations...</div>
+        <div>Fetching live trains...</div>
       </div>
     `;
     cardEl.appendChild(panel);
 
     try {
-      /* 获取线路的 StopPoints（站点列表） */
-      const url = `${API_BASE}/Line/${lineId}/StopPoints`;
-      const res = await fetch(url, { cache: "no-cache" });
+      /* 并行请求：
+         1. 站点列表 (如果缓存没有)
+         2. 全线到站预测 (Arrivals)
+         这样一次点击最多消耗 2 个 API 请求，大幅降低 429 风险。
+      */
+      const promises = [];
 
-      if (!res.ok) throw new Error("Failed loading stations");
+      // Task 1: 站点列表
+      if (stationCache[lineId]) {
+        promises.push(Promise.resolve(stationCache[lineId]));
+      } else {
+        promises.push(
+          fetch(`${API_BASE}/Line/${lineId}/StopPoints`)
+            .then(r => r.json())
+            .then(data => {
+              // 简单过滤，确保是车站
+              const valid = data.filter(d => d.commonName);
+              stationCache[lineId] = valid;
+              return valid;
+            })
+        );
+      }
 
-      const stations = await res.json();
+      // Task 2: 全线到站数据
+      promises.push(
+        fetch(`${API_BASE}/Line/${lineId}/Arrivals`, { cache: "no-cache" })
+          .then(r => r.json())
+      );
 
-      /* 渲染站点 */
-      renderStations(stations, panel);
+      const [stations, arrivals] = await Promise.all(promises);
+
+      /* 渲染站点 + 匹配数据 */
+      renderStations(stations, arrivals, panel);
 
     } catch (err) {
-      panel.innerHTML = `<div class="error-box">Error loading stations: ${err.message}</div>`;
+      console.error(err);
+      panel.innerHTML = `<div class="error-box">Error loading data: ${err.message}</div>`;
     }
   }
 
-  /* -------------------------------
-       渲染站点列表 + 到站预测
-  ------------------------------- */
-  function renderStations(stations, panel) {
-    panel.innerHTML = "";
+/* -------------------------------
+     渲染站点 + 内存匹配到站数据 (已修复 replace 错误)
+------------------------------- */
+function renderStations(stations, allArrivals, panel) {
+  panel.innerHTML = "";
 
-    stations.forEach(stop => {
-      const row = document.createElement("div");
-      row.className = "station-row";
+  // 1. 将到站数据按 naptanId 分组，方便快速查找
+  const arrivalMap = {};
+  allArrivals.forEach(train => {
+    const sId = train.naptanId;
+    if (!arrivalMap[sId]) arrivalMap[sId] = [];
+    arrivalMap[sId].push(train);
+  });
 
-      row.innerHTML = `
-        <div class="station-name">${stop.commonName}</div>
-        <div class="station-next" data-id="${stop.id}">
-          <span class="muted">Loading...</span>
-        </div>
+  // 2. 遍历所有站点并渲染
+  const validStations = stations.filter(s => 
+    s.stopType === "NaptanMetroStation" || 
+    s.stopType === "NaptanRailStation" ||
+    s.modes.includes("tube") || 
+    s.modes.includes("elizabeth-line") ||
+    s.modes.includes("overground")
+  );
+
+  if (validStations.length === 0) {
+    panel.innerHTML = `<div style="padding:10px; color:var(--muted)">No stations found.</div>`;
+    return;
+  }
+
+  validStations.forEach(stop => {
+    const row = document.createElement("div");
+    row.className = "station-row";
+
+    // 获取该站点的列车列表
+    const trains = arrivalMap[stop.id] || [];
+    
+    // 按时间排序
+    trains.sort((a, b) => a.timeToStation - b.timeToStation);
+
+    // 构建右侧状态 HTML
+    let statusHtml = "<span style='color:#9ca3af'>--</span>";
+
+    if (trains.length > 0) {
+      const next = trains[0];
+      const mins = Math.round(next.timeToStation / 60);
+      const timeStr = mins < 1 ? "Due" : `${mins} min`;
+      
+      // 【修复点】：使用 ?? "" 确保 destinationName 属性存在且为字符串
+      const rawDestName = next.destinationName ?? ""; 
+      
+      // 去掉冗余后缀
+      const dest = rawDestName.replace(" Underground Station", "").replace(" Rail Station", "");
+
+      statusHtml = `
+        <div style="font-weight:700; color:var(--tfl-blue)">${timeStr}</div>
+        <div style="font-size:11px; color:var(--muted)">${dest}</div>
       `;
+    }
 
-      panel.appendChild(row);
+    row.innerHTML = `
+      <div class="station-name">${stop.commonName}</div>
+      <div class="station-next">${statusHtml}</div>
+    `;
 
-      /* 获取每个站点的到站预测（节流） */
-      loadStationArrivals(stop.id, row.querySelector(".station-next"));
-    });
-  }
+    panel.appendChild(row);
+  });
+}
 
-  /* -------------------------------
-        获取某站点到站预测
-  ------------------------------- */
-  let arrivalQueue = Promise.resolve(); // 让请求串行，避免 429
-
-  function loadStationArrivals(stopId, el) {
-    arrivalQueue = arrivalQueue.then(async () => {
-      try {
-        const url = `${API_BASE}/StopPoint/${stopId}/Arrivals`;
-        const res = await fetch(url, { cache: "no-cache" });
-
-        if (!res.ok) throw new Error("API " + res.status);
-
-        const trains = await res.json();
-
-        if (trains.length === 0) {
-          el.textContent = "No data";
-          return;
-        }
-
-        // 找到最早到站的 Train
-        const soonest = trains.sort((a, b) => a.timeToStation - b.timeToStation)[0];
-        const minutes = Math.round(soonest.timeToStation / 60);
-
-        el.innerHTML = `
-          <div>${minutes} min</div>
-          <div>${soonest.destinationName.replace(" Underground Station","")}</div>
-        `;
-
-      } catch (err) {
-        el.textContent = "Error";
-      }
-    });
-  }
 
   /* 60 秒刷新一次线路状态 */
   loadLineStatus();
