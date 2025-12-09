@@ -560,317 +560,56 @@ function renderStations(stations, allArrivals, panel) {
   );
 
   if (validStations.length === 0) {
-<script>
-/* -----------------------------------------------------
-   TfL 伦敦地铁实时状态主程序 (包含城市切换逻辑 & 容错修复)
------------------------------------------------------ */
-
-document.addEventListener("DOMContentLoaded", () => {
-
-  const API_BASE = "https://api.tfl.gov.uk";
-  
-  const statusContainer = document.getElementById("status-container");
-  const loadingBox = document.getElementById("loading");
-  const errorBox = document.getElementById("error");
-  const lastUpdated = document.getElementById("last-updated");
-  
-  // TfL 仅包含这些 Lines 的状态
-  const LINE_IDS = [
-    "Bakerloo", "Central", "Circle", "District", 
-    "Hammersmith-and-City", "Jubilee", "Metropolitan", 
-    "Northern", "Piccadilly", "Victoria", "Waterloo-and-City"
-  ];
-
-  // TfL 状态翻译
-  const STATUS_MAP_ZH = {
-    "Good Service": "正常服务",
-    "Minor Delays": "轻微延误",
-    "Severe Delays": "严重延误",
-    "Part Closure": "部分关闭",
-    "Planned Closure": "计划关闭",
-    "Suspended": "暂停服务",
-    "Reduced Service": "减少服务",
-    "Unknown": "未知状态",
-    "API Failed": "API 请求失败",
-    "Stations Failed": "站点数据获取失败",
-    "Data Unavailable": "无数据",
-    "Loading...": "加载中...",
-    "Error loading data: ": "加载数据时出错：",
-  };
-
-  // 缓存：用于存储各条线路的站点列表
-  let stationCache = {}; 
-  // 全局变量：用于控制站点到站请求的串行队列
-  let arrivalQueue = Promise.resolve(); // 保持全局变量，但在点击时重置
-
-  /* ----------------------------------
-    模态窗口控制函数
-  -------------------------------------*/
-
-  function openModal() {
-    document.getElementById('city-modal').classList.add('open');
-    document.getElementById('city-modal').setAttribute('aria-hidden', 'false');
+    panel.innerHTML = `<div style="padding:10px; color:var(--muted)">No stations found.</div>`;
+    return;
   }
 
-  function closeModal() {
-    document.getElementById('city-modal').classList.remove('open');
-    document.getElementById('city-modal').setAttribute('aria-hidden', 'true');
-  }
-  
-  // 允许点击模态窗口外部关闭
-  document.addEventListener('click', (e) => {
-      if (e.target.id === 'city-modal') {
-          closeModal();
-      }
-  });
+  validStations.forEach(stop => {
+    const row = document.createElement("div");
+    row.className = "station-row";
 
-
-  /* ---------------------------
-      TfL API 请求辅助函数
-  --------------------------- */
-  function fetchTfL(path) {
-    const url = `${API_BASE}${path}`;
-    return fetch(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
-      cache: "no-cache"
-    });
-  }
-
-  /* 状态 → Chip 颜色分类 (使用英文状态名称) */
-  function severityToClass(severity) {
-    if (!severity) return "status-good";
-
-    if (severity.includes("Good Service")) return "status-good";
-    if (severity.includes("Minor")) return "status-minor";
-    if (severity.includes("Severe") || severity.includes("Closure") || severity.includes("Suspended")) return "status-severe";
-
-    return "status-minor";
-  }
-
-  /* ---------------------------
-      1. 缓存所有站点信息 (只需执行一次)
-  --------------------------- */
-  async function cacheStations() {
-    try {
-        const res = await fetchTfL(`/StopPoint/Mode/tube/Disruption`);
-        if (!res.ok) throw new Error(STATUS_MAP_ZH["Stations Failed"]);
-        
-        const data = await res.json();
-        const allStopPoints = data.stopPoints;
-
-        LINE_IDS.forEach(id => {
-          stationCache[id] = allStopPoints
-            .filter(s => s.lines.some(line => line.id === id.toLowerCase()))
-            .sort((a, b) => a.commonName.localeCompare(b.commonName));
-        });
-
-    } catch (err) {
-        console.error("Failed to cache stations:", err);
-    }
-  }
-
-  /* ---------------------------
-      2. 主请求：获取所有线路状态
-  --------------------------- */
-  async function loadLineStatus() {
-    try {
-      loadingBox.style.display = "flex";
-      errorBox.style.display = "none";
-      
-      const res = await fetchTfL(`/Line/${LINE_IDS.join(',')}/Status`);
-      if (!res.ok) throw new Error(STATUS_MAP_ZH["API Failed"]);
-      
-      const lines = await res.json();
-      
-      renderLineCards(lines);
-
-      loadingBox.style.display = "none";
-      lastUpdated.textContent = new Date().toLocaleTimeString();
-
-    } catch (err) {
-      loadingBox.style.display = "none";
-      errorBox.textContent = STATUS_MAP_ZH["Error loading data: "] + err.message;
-      errorBox.style.display = "block";
-    }
-  }
-
-  /* ---------------------------
-     渲染线路卡片
-  --------------------------- */
-  function renderLineCards(lines) {
-    const oldCards = statusContainer.querySelectorAll(".line-card");
-    oldCards.forEach(x => x.remove());
-
-    lines.forEach(line => {
-      const id = line.id.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).replace(/ /g, '-'); 
-      
-      const rawStatus = line.lineStatuses?.[0]?.statusSeverityDescription ?? "Unknown"; 
-      const status = STATUS_MAP_ZH[rawStatus] || rawStatus;
-      const reason = line.lineStatuses?.[0]?.reason ?? "";
-
-      const severityClass = severityToClass(rawStatus); 
-      
-      const card = document.createElement("div");
-      card.className = `line-card border-${id}`;
-
-      const displayName = id.replace(/-/g, ' '); 
-
-      card.innerHTML = `
-        <div class="line-head">
-          <div class="line-title">
-            ${displayName} Line
-          </div>
-          <div class="status-chip ${severityClass}">${status}</div>
-        </div>
-        ${reason ? `<div class="line-reason">${reason}</div>` : ""}
-      `;
-
-      card.addEventListener("click", () => toggleStations(id, card));
-
-      statusContainer.appendChild(card);
-    });
-  }
-
-
-  /* ---------------------------------------------------
-     3. 点击线路 → 获取站台到站信息 (使用串行队列)
-  --------------------------------------------------- */
-  async function toggleStations(lineId, cardEl) {
-    const existing = cardEl.querySelector(".stations-panel");
-
-    if (existing) {
-      existing.remove();
-      return;
-    }
-
-    const panel = document.createElement("div");
-    panel.className = "stations-panel";
+    // 获取该站点的列车列表
+    const trains = arrivalMap[stop.id] || [];
     
-    panel.innerHTML = `
-      <div class="loading">
-        <div class="spinner"></div>
-        <div>${STATUS_MAP_ZH["Loading..."]}</div>
-      </div>
+    // 按时间排序
+    trains.sort((a, b) => a.timeToStation - b.timeToStation);
+
+    // 构建右侧状态 HTML
+    let statusHtml = "<span style='color:#9ca3af'>--</span>";
+
+    if (trains.length > 0) {
+      const next = trains[0];
+      const mins = Math.round(next.timeToStation / 60);
+      const timeStr = mins < 1 ? "Due" : `${mins} min`;
+      
+      // 【修复点】：使用 ?? "" 确保 destinationName 属性存在且为字符串
+      const rawDestName = next.destinationName ?? ""; 
+      
+      // 去掉冗余后缀
+      const dest = rawDestName.replace(" Underground Station", "").replace(" Rail Station", "");
+
+      statusHtml = `
+        <div style="font-weight:700; color:var(--tfl-blue)">${timeStr}</div>
+        <div style="font-size:11px; color:var(--muted)">${dest}</div>
+      `;
+    }
+
+    row.innerHTML = `
+      <div class="station-name">${stop.commonName}</div>
+      <div class="station-next">${statusHtml}</div>
     `;
-    cardEl.appendChild(panel);
-    
-    const lineStations = stationCache[lineId]; 
-    if (!lineStations || lineStations.length === 0) {
-        panel.innerHTML = `<div style="padding:10px; color:var(--muted)">${STATUS_MAP_ZH["Stations Failed"]}</div>`;
-        return;
-    }
 
-    // 重置队列，确保新的点击从空队列开始
-    arrivalQueue = Promise.resolve(); 
-    
-    renderStations(lineStations, panel); 
-  }
-
-  /* -------------------------------
-     4. 渲染站点列表
-  ------------------------------- */
-  function renderStations(stations, panel) {
-    panel.innerHTML = ""; 
-
-    stations.forEach(stop => {
-      const row = document.createElement("div");
-      row.className = "station-row";
-
-      row.innerHTML = `
-        <div class="station-name">${stop.commonName}</div>
-        <div class="station-next" data-id="${stop.id}">
-          <span class="muted">${STATUS_MAP_ZH["Loading..."]}</span>
-        </div>
-      `;
-
-      panel.appendChild(row);
-
-      /* 获取每个站点的到站预测（节流/串行） */
-      loadStationArrivals(stop.id, row.querySelector(".station-next"));
-    });
-  }
-
-  /* -------------------------------
-      获取某站点到站预测 (串行/高容错)
-  ------------------------------- */
-  function loadStationArrivals(stopId, el) {
-    // 关键修复：确保即使上一个请求失败，队列也会继续
-    arrivalQueue = arrivalQueue.then(async () => {
-      // 增加延迟以确保 TfL 不会触发 429
-      await new Promise(r => setTimeout(r, 100)); 
-
-      try {
-        const url = `${API_BASE}/StopPoint/${stopId}/Arrivals`;
-        const res = await fetchTfL(url);
-
-        if (!res.ok) throw new Error("API " + res.status);
-
-        const trains = await res.json();
-
-        if (trains.length === 0) {
-          el.textContent = STATUS_MAP_ZH["Data Unavailable"];
-          return;
-        }
-
-        const soonest = trains.sort((a, b) => a.timeToStation - b.timeToStation)[0];
-        const minutes = Math.round(soonest.timeToStation / 60);
-        
-        const dest = soonest.destinationName.replace(/ (Underground|Rail) Station$/, '');
-        const lineCode = soonest.lineId.charAt(0).toUpperCase() + soonest.lineId.slice(1);
-
-        let timeStr;
-        if (minutes < 1) timeStr = '即将到站';
-        else if (minutes < 2) timeStr = '1 分钟';
-        else timeStr = `${minutes} 分钟`;
-
-        const lineColor = getLineColor(soonest.lineId);
-
-        el.innerHTML = `
-          <div style="font-weight:700; color:${lineColor}">${timeStr}</div>
-          <div style="font-size:11px; color:var(--muted)">开往 ${dest} (${lineCode})</div>
-        `;
-
-      } catch (e) {
-        // 关键修复：容错处理。如果单个站点失败，只显示错误，但不中断队列。
-        el.textContent = `${STATUS_MAP_ZH["API Failed"]} (${e.message})`;
-        // 这里不 throw e，以确保队列继续执行下一个 .then()
-      }
-    });
-    // 尾部添加 catch，确保如果队列中发生任何未捕获的错误，队列能够重置。
-    arrivalQueue.catch(e => {
-        console.error("Queue error, resetting:", e);
-        // 如果队列最终失败，将其重置，以便用户下次点击时能够重新尝试。
-        arrivalQueue = Promise.resolve();
-    });
-  }
-
-  function getLineColor(lineId) {
-      const colors = {
-          "bakerloo": "#B36305", "central": "#E32017", "circle": "#FFD300", 
-          "district": "#00782A", "hammersmith-city": "#F3A9BB", "jubilee": "#A0A5A9",
-          "metropolitan": "#9B0056", "northern": "#000000", "piccadilly": "#003688",
-          "victoria": "#0098D4", "waterloo-city": "#99D1C7"
-      };
-      return colors[lineId.toLowerCase()] || '#333';
-  }
-
-
-  /* ---------------------------
-      启动程序
-  --------------------------- */
-  async function init() {
-      await cacheStations();
-      await loadLineStatus();
-      setInterval(loadLineStatus, 60000);
-  }
-
-  init();
-});
-</script>
-
+    panel.appendChild(row);
   });
 }
+
+
+  /* 60 秒刷新一次线路状态 */
+  loadLineStatus();
+  setInterval(loadLineStatus, 60000);
+
+});
+</script>
 
 </body>
 </html>
