@@ -1,0 +1,624 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>  Mind the Tube华盛顿地铁实时状态</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* WMATA Colors: Red, Blue, Yellow */
+    :root{
+      --tfl-blue: #0060AA; /* WMATA Blue */
+      --tfl-red: #BC001F; /* WMATA Red */
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --muted: #6b7280;
+    }
+
+    /* 基础布局 */
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: var(--bg);
+      color: #111827;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* 容器：最大宽度并垂直伸展 */
+    #app-container{
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 18px;
+      display:flex;
+      flex-direction:column;
+      min-height:100vh;
+      box-sizing:border-box;
+    }
+
+    /* Header */
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding-bottom:12px;
+      border-bottom:4px solid var(--tfl-red);
+    }
+
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .title {
+      font-weight:800;
+      font-size:20px;
+      letter-spacing:0.2px;
+    }
+
+    .subtitle {
+      font-size:13px;
+      color:var(--muted);
+      margin-top:2px;
+    }
+
+    /* Logo/Roundel 容器样式 */
+    .roundel-wrap{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    
+    /* WMATA Logo 样式 */
+    .wmata-logo {
+        width: 64px; /* 保持与原 Roundel 相同尺寸 */
+        height: 64px;
+        object-fit: contain;
+        /* 添加一个圆角或阴影，使其与卡片风格匹配 */
+        border-radius: 8px; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        padding: 4px; /* 增加一点内边距，让 logo 更突出 */
+        background: white;
+    }
+
+
+    /* 主体（状态列表区域） */
+    main {
+      flex:1 1 auto;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      padding-top:18px;
+      padding-bottom:18px;
+      overflow:visible;
+    }
+
+    #status-container{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      overflow:auto;
+      padding-right:6px;
+    }
+
+    /* 卡片样式 */
+    .line-card{
+      display:flex;
+      flex-direction:column;
+      background:var(--card);
+      border-radius:10px;
+      padding:12px;
+      box-shadow:0 6px 18px rgba(15,23,42,0.06);
+      border-left:8px solid #333;
+      cursor:pointer;
+      transition:transform .12s ease, box-shadow .12s ease;
+    }
+    .line-card:hover{ transform: translateY(-3px); box-shadow:0 12px 30px rgba(15,23,42,0.08); }
+
+    .line-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .line-title{
+      font-weight:700;
+      font-size:16px;
+    }
+
+    .status-chip{
+      font-weight:700;
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      white-space:nowrap;
+    }
+
+    .status-good{ background:#d1fae5; color:#065f46; }
+    .status-minor{ background:#fff7ed; color:#92400e; }
+    .status-severe{ background:#fee2e2; color:#991b1b; }
+
+    .line-reason{
+      margin-top:8px;
+      color:#374151;
+      font-size:13px;
+    }
+
+    /* 站点展开面板 */
+    .stations-panel{
+      margin-top:10px;
+      border-radius:8px;
+      overflow:hidden;
+      border:1px dashed rgba(0,0,0,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,250,250,0.96));
+      padding:8px;
+    }
+
+    .station-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:8px;
+      border-bottom:1px solid rgba(15,23,42,0.03);
+    }
+    .station-row:last-child{ border-bottom:0; }
+
+    .station-name{ font-weight:600; color:#0f172a; }
+    .station-next{ font-size:13px; color:#374151; text-align:right; min-width:160px; }
+
+    /* Footer */
+    footer{
+      margin-top:12px;
+      padding-top:10px;
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
+    }
+
+    /* Loading / Error */
+    .loading {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      padding:18px;
+      color:var(--muted);
+    }
+
+    .spinner {
+      width:28px; height:28px;
+      border-radius:50%;
+      border:3px solid rgba(0,0,0,0.08);
+      border-left-color:var(--tfl-red);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background:#fef2f2;
+      color:#991b1b;
+      padding:10px;
+      border-radius:8px;
+      font-weight:600;
+    }
+
+    /* Responsive */
+    @media (max-width:640px){
+      .wmata-logo { width:52px; height:52px; }
+      .line-title{ font-size:15px; }
+      .station-next{ min-width:120px; font-size:12px; }
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg: #0b1220;
+        --card: #0f1724;
+        --muted: #9ca3af;
+      }
+      body{ background: var(--bg); color:#e6eef8;}
+      header{ border-bottom-color:var(--tfl-red);}
+      .line-card{ background: linear-gradient(180deg,#0b1224,#0c1528); box-shadow: 0 6px 20px rgba(2,6,23,0.6);}
+      .line-reason{ color:#cbd5e1;}
+      .stations-panel{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03);}
+      .wmata-logo { background: #0b1220; }
+    }
+
+    /* WMATA Line color utility classes (left border) */
+    .border-RD { border-left-color: #BC001F; }
+    .border-BL { border-left-color: #0060AA; }
+    .border-YL { border-left-color: #FFD433; }
+    .border-GR { border-left-color: #00933C; }
+    .border-OR { border-left-color: #FF9900; }
+    .border-SV { border-left-color: #A2A9B1; }
+  </style>
+</head>
+<body>
+  <div id="app-container">
+    <header>
+      <div class="brand">
+        <div>
+          <div class="title">华盛顿地铁监测</div>
+          <div class="subtitle">实时状态</div>
+        </div>
+      </div>
+
+      <div class="roundel-wrap" aria-hidden="true">
+        <img class="wmata-logo" 
+             src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/WMATA_Metro_Logo_small.svg/240px-WMATA_Metro_Logo_small.svg.png" 
+             alt="WMATA Metro Logo">
+      </div>
+    </header>
+
+    <main>
+      <section id="status-container" aria-live="polite">
+        <div id="loading" class="loading">
+          <div class="spinner" aria-hidden="true"></div>
+          <div>正在从 WMATA 获取实时状态...</div>
+        </div>
+
+        <div id="error" class="error-box" style="display:none;"></div>
+
+        </section>
+    </main>
+
+    <footer>
+      开放数据来源于华盛顿特区都会区交通局 (WMATA) · 我们与 WMATA 没有从属关系
+      <div style="margin-top:6px; font-size:12px; color:var(--muted)">上次更新时间: <span id="last-updated">--:--</span></div>
+    </footer>
+  </div>
+
+<script>
+/* -----------------------------------------------------
+   WMATA 华盛顿地铁实时状态主程序 
+----------------------------------------------------- */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const API_KEY = "bf599509a9d845428a6c74b1feed072e";
+  const WMATA_BASE = "https://api.wmata.com";
+  const WMATA_API_PATH = "/Rail.svc/json"; 
+
+  const statusContainer = document.getElementById("status-container");
+  const loadingBox = document.getElementById("loading");
+  const errorBox = document.getElementById("error");
+  const lastUpdated = document.getElementById("last-updated");
+  
+  const LINE_COLORS = {
+    "RD": "#BC001F", "BL": "#0060AA", "YL": "#FFD433", 
+    "GR": "#00933C", "OR": "#FF9900", "SV": "#A2A9B1"
+  };
+  
+  const LINE_NAMES_ZH = {
+    "RD": "红线", "BL": "蓝线", "YL": "黄线", 
+    "GR": "绿线", "OR": "橙线", "SV": "银线"
+  };
+
+  // 【中文化】线路状态翻译
+  const STATUS_MAP_ZH = {
+    "Good Service": "正常服务",
+    "Minor Delay": "轻微延误",
+    "Severe Delay": "严重延误",
+    "Unknown": "未知状态",
+    "API Status Failed": "线路状态 API 请求失败",
+    "Could not fetch stations.": "无法获取站点列表。",
+    "Error loading data: ": "加载数据时出错：",
+  };
+  
+  const ALL_LINE_IDS = Object.keys(LINE_COLORS);
+
+  let stationCache = {};
+  const THROTTLE_DELAY = 150; 
+
+  /* ---------------------------
+      WMATA API 请求辅助函数
+  --------------------------- */
+  function fetchWMATA(path) {
+    const url = `${WMATA_BASE}${path}`;
+    return fetch(url, {
+      method: 'GET',
+      headers: {
+        'api_key': API_KEY, 
+        'Accept': 'application/json'
+      },
+      cache: "no-cache"
+    });
+  }
+
+  /* 状态 → Chip 颜色分类 */
+  function severityToClass(severity) {
+    if (!severity) return "status-good";
+    severity = severity.toLowerCase();
+
+    if (severity.includes("good") || severity.includes("normal")) return "status-good";
+    if (severity.includes("minor")) return "status-minor";
+    if (severity.includes("severe") || severity.includes("delay") || severity.includes("closure")) return "status-severe";
+
+    return "status-minor";
+  }
+
+  /* ---------------------------
+      1. 缓存所有站点信息
+  --------------------------- */
+  async function cacheStations() {
+    try {
+        const res = await fetchWMATA(`${WMATA_API_PATH}/jStations`);
+        if (!res.ok) throw new Error(STATUS_MAP_ZH["Could not fetch stations."]); // 【中文化】
+        
+        const data = await res.json();
+        const allStations = data.Stations;
+
+        ALL_LINE_IDS.forEach(id => {
+          stationCache[id] = allStations.filter(s => 
+            s.LineCode1 === id || 
+            s.LineCode2 === id || 
+            s.LineCode3 === id || 
+            s.LineCode4 === id
+          );
+           stationCache[id].sort((a, b) => a.Name.localeCompare(b.Name));
+        });
+
+    } catch (err) {
+        console.error("Failed to cache stations:", err);
+    }
+  }
+
+
+  /* ---------------------------
+      2. 主请求：获取所有线路状态
+  --------------------------- */
+  async function loadLineStatus() {
+    try {
+      loadingBox.style.display = "flex";
+      errorBox.style.display = "none";
+      
+      const lineStatusMap = {};
+      ALL_LINE_IDS.forEach(id => {
+        lineStatusMap[id] = { status: "Good Service", reason: "" };
+      });
+
+      const incidentRes = await fetchWMATA('/Incidents.svc/json/Incidents');
+      if (!incidentRes.ok) throw new Error(STATUS_MAP_ZH["API Status Failed"]); // 【中文化】
+      
+      const incidentData = await incidentRes.json();
+
+      if (incidentData.Incidents) {
+        incidentData.Incidents.forEach(incident => {
+          const linesAffected = incident.LinesAffected.split(';').map(l => l.trim()).filter(l => l.length > 0);
+          const description = incident.Description;
+          const severity = incident.IncidentType.includes("Delay") ? "Minor Delay" : "Severe Delay"; 
+
+          linesAffected.forEach(lineCode => {
+            if (lineStatusMap[lineCode]) {
+              if (lineStatusMap[lineCode].status === "Good Service" || lineStatusMap[lineCode].status.includes("Minor")) {
+                 lineStatusMap[lineCode].status = severity;
+              }
+              if (lineStatusMap[lineCode].reason) {
+                 lineStatusMap[lineCode].reason += ` | ${description}`;
+              } else {
+                 lineStatusMap[lineCode].reason = description;
+              }
+            }
+          });
+        });
+      }
+
+      const lineList = ALL_LINE_IDS.map(id => {
+          const info = lineStatusMap[id];
+          let translatedStatus = STATUS_MAP_ZH[info.status] || info.status; 
+          
+          return {
+              id: id,
+              name: LINE_NAMES_ZH[id] || id,
+              lineStatuses: [{
+                  // 存储英文状态用于 CSS，显示中文状态
+                  statusSeverityDescription: translatedStatus, 
+                  reason: info.reason.trim()
+              }]
+          };
+      });
+      
+      renderLineCards(lineList);
+
+      loadingBox.style.display = "none";
+      lastUpdated.textContent = new Date().toLocaleTimeString();
+
+    } catch (err) {
+      loadingBox.style.display = "none";
+      // 【中文化】错误信息
+      errorBox.textContent = STATUS_MAP_ZH["Error loading data: "] + err.message;
+      errorBox.style.display = "block";
+    }
+  }
+
+  /* ---------------------------
+     渲染线路卡片
+  --------------------------- */
+  function renderLineCards(lines) {
+    const oldCards = statusContainer.querySelectorAll(".line-card");
+    oldCards.forEach(x => x.remove());
+
+    lines.forEach(line => {
+      const id = line.id;
+      const name = line.name;
+      // status 已经是翻译后的中文
+      const status = line.lineStatuses?.[0]?.statusSeverityDescription ?? STATUS_MAP_ZH["Unknown"]; 
+      const reason = line.lineStatuses?.[0]?.reason ?? "";
+      
+      // 使用英文状态来确定颜色等级
+      const rawStatus = Object.keys(STATUS_MAP_ZH).find(key => STATUS_MAP_ZH[key] === status) || status;
+
+      const color = LINE_COLORS[id] || "#333";
+      const severityClass = severityToClass(rawStatus); // 使用 rawStatus 判断颜色等级
+
+      const card = document.createElement("div");
+      card.className = `line-card border-${id}`;
+      card.style.borderLeftColor = color;
+
+      card.innerHTML = `
+        <div class="line-head">
+          <div class="line-title">
+            ${name} (${id})
+          </div>
+          <div class="status-chip ${severityClass}">${status}</div>
+        </div>
+        ${reason ? `<div class="line-reason">${reason}</div>` : ""}
+      `;
+
+      card.addEventListener("click", () => toggleStations(id, card));
+
+      statusContainer.appendChild(card);
+    });
+  }
+
+  /* ---------------------------------------------------
+     辅助函数：获取单个站点到站预测 (不带延迟)
+  --------------------------------------------------- */
+  async function getStationArrivals(stationCode) {
+    const res = await fetchWMATA(`/StationPrediction.svc/json/GetPrediction/${stationCode}`);
+    if (!res.ok) throw new Error(`API ${res.status} for ${stationCode}`);
+
+    const data = await res.json();
+    return data.Trains || []; 
+  }
+
+
+  /* ---------------------------------------------------
+     3. 点击线路 → 获取站台到站信息 (串行 + 节流)
+  --------------------------------------------------- */
+  async function toggleStations(lineId, cardEl) {
+    const existing = cardEl.querySelector(".stations-panel");
+
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    const panel = document.createElement("div");
+    panel.className = "stations-panel";
+    
+    panel.innerHTML = `
+      <div class="loading">
+        <div class="spinner"></div>
+        <div id="loading-progress">正在获取站点数据...</div>
+      </div>
+    `;
+    cardEl.appendChild(panel);
+
+    try {
+        const lineStations = stationCache[lineId]; 
+        const allArrivals = [];
+        let completedStations = 0;
+        const progressEl = document.getElementById("loading-progress");
+
+        if (progressEl) {
+            progressEl.textContent = `正在获取 0/${lineStations.length} 个站点的数据... (正在节流中)`; // 【中文化】
+        }
+        
+        for (const station of lineStations) {
+            await new Promise(resolve => setTimeout(resolve, THROTTLE_DELAY)); 
+
+            try {
+                const predictions = await getStationArrivals(station.Code);
+                allArrivals.push(...predictions);
+                
+                completedStations++;
+                if (progressEl) {
+                   progressEl.textContent = `已获取 ${completedStations}/${lineStations.length} 个站点的数据...`; // 【中文化】
+                }
+                
+            } catch (e) {
+                console.warn(`Station ${station.Code} failed: ${e.message}. Continuing...`);
+            }
+        }
+
+        renderStations(lineStations, allArrivals, panel);
+
+    } catch (err) {
+        console.error(err);
+        // 【中文化】错误信息
+        panel.innerHTML = `<div class="error-box">${STATUS_MAP_ZH["Error loading data: "]}${err.message}</div>`;
+    }
+  }
+
+  /* -------------------------------
+     4. 渲染站点 + 内存匹配到站数据
+  ------------------------------- */
+  function renderStations(stations, allArrivals, panel) {
+    panel.innerHTML = "";
+
+    const arrivalMap = {};
+    allArrivals.forEach(train => {
+      const stationCode = train.LocationCode;
+      if (!arrivalMap[stationCode]) arrivalMap[stationCode] = [];
+      arrivalMap[stationCode].push(train);
+    });
+
+    if (stations.length === 0) {
+      panel.innerHTML = `<div style="padding:10px; color:var(--muted)">未找到该线路的任何站点。</div>`; // 【中文化】
+      return;
+    }
+
+    stations.forEach(stop => {
+      const row = document.createElement("div");
+      row.className = "station-row";
+
+      const predictions = arrivalMap[stop.Code] || [];
+      
+      predictions.sort((a, b) => {
+          const timeA = (a.Min === 'ARR' || a.Min === 'BRD') ? 0 : parseInt(a.Min || 999);
+          const timeB = (b.Min === 'ARR' || b.Min === 'BRD') ? 0 : parseInt(b.Min || 999);
+          return timeA - timeB;
+      });
+
+      let statusHtml = "<span style='color:#9ca3af'>--</span>";
+
+      if (predictions.length > 0) {
+        const next = predictions[0];
+        
+        const rawDestName = next.DestinationName ?? "Unknown"; 
+        const dest = rawDestName.replace(" Underground Station", "").replace(" Rail Station", "");
+        
+        let timeStr = next.Min;
+        if (timeStr === 'ARR') timeStr = '即将到站'; // 【中文化】
+        if (timeStr === 'BRD') timeStr = '正在上车'; // 【中文化】
+        if (!isNaN(parseInt(timeStr))) timeStr += ' 分钟'; // 【中文化】
+        
+        const lineColor = LINE_COLORS[next.Line] || 'var(--tfl-blue)';
+
+        statusHtml = `
+          <div style="font-weight:700; color:${lineColor}">${timeStr}</div>
+          <div style="font-size:11px; color:var(--muted)">开往 ${dest} (${next.Line})</div> `;
+      }
+
+      row.innerHTML = `
+        <div class="station-name">${stop.Name}</div>
+        <div class="station-next">${statusHtml}</div>
+      `;
+
+      panel.appendChild(row);
+    });
+  }
+
+  /* ---------------------------
+      启动程序
+  --------------------------- */
+  async function init() {
+      await cacheStations();
+      await loadLineStatus();
+      setInterval(loadLineStatus, 60000);
+  }
+
+  init();
+});
+</script>
+</body>
+</html>
