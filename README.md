@@ -1,5 +1,5 @@
-# Mind-the-Tube
+# Mind the Tube
 Mind the Tube 是一个极简、英伦风、遵循 TfL 视觉风格的网页应用，用于显示各个城市地铁的实时运营状态。它基于官方 Unified API，界面干净流畅，适配手机与电脑，为你提供最及时的地铁线路信息。 **现在，它不只是伦敦，我们加入了华盛顿地铁！**
 
 > [!TIP] 
-> 在 Wiki 里查看关于地铁的更多资料！
+> 在[GitHub Wiki](https://github.com/Huaqing-chq/Mind-the-Tube/wiki) 里查看关于地铁的更多资料！
