@@ -3,49 +3,54 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mind the Tube — 伦敦地铁状态</title>
+  <title>Mind the Tube — 实时伦敦地铁状态</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
   <style>
-    :root { --tfl-blue: #0019A8; --tfl-red: #e60028; --bg: #f3f4f6; --card: #ffffff; --muted: #6b7280; }
+    :root {
+      --tfl-blue: #0019A8; --tfl-red: #e60028;
+      --bg: #f3f4f6; --card: #ffffff; --muted: #6b7280;
+    }
     html, body { height: 100%; margin: 0; font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: #111827; }
     #app-container { max-width: 960px; margin: 0 auto; padding: 18px; display: flex; flex-direction: column; min-height: 100vh; }
     
+    /* Header 交互 */
     header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 4px solid var(--tfl-red); cursor: pointer; }
     .brand { display: flex; align-items: center; gap: 12px; }
     .title { font-weight: 800; font-size: 20px; }
     .subtitle { font-size: 13px; color: var(--muted); }
 
-    .roundel-wrap { display: flex; align-items: center; gap: 12px; }
-    .roundel { width: 64px; height: 64px; position: relative; flex-shrink: 0; }
-    .roundel .band { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; height: 22px; overflow: hidden; }
-    .roundel .band .word { display: block; height: 22px; line-height: 22px; font-weight: 500; color: white; padding: 0 10px; white-space: nowrap; animation: slideWords 12s linear infinite; }
-    @keyframes slideWords { 0%, 16.6% { transform: translateY(0); } 20%, 36.6% { transform: translateY(-22px); } 40%, 56.6% { transform: translateY(-44px); } 60%, 76.6% { transform: translateY(-66px); } 80%, 96.6% { transform: translateY(-88px); } 100% { transform: translateY(0); } }
+    .roundel-wrap { width: 64px; height: 64px; flex-shrink: 0; }
 
+    /* 线路卡片 */
     main { flex: 1; padding: 18px 0; }
     #status-container { display: flex; flex-direction: column; gap: 12px; }
-    .line-card { background: var(--card); border-radius: 10px; padding: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 8px solid #333; cursor: pointer; }
+    .line-card { background: var(--card); border-radius: 10px; padding: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 8px solid #333; cursor: pointer; transition: transform 0.1s; }
+    .line-card:active { transform: scale(0.98); }
     .line-head { display: flex; align-items: center; justify-content: space-between; }
     .line-title { font-weight: 700; font-size: 16px; }
     .status-chip { font-weight: 700; font-size: 11px; padding: 4px 10px; border-radius: 999px; }
     .status-good { background: #d1fae5; color: #065f46; }
     .status-minor { background: #fff7ed; color: #92400e; }
-    .status-severe { background: #fee2e2; color: #991b1b; }
+    
     .line-reason { margin-top: 8px; font-size: 13px; color: #4b5563; line-height: 1.4; padding: 8px; background: rgba(0,0,0,0.03); border-radius: 6px; }
 
+    /* 站点详情 */
     .stations-panel { margin-top: 12px; padding: 8px; border-top: 1px solid #eee; }
     .station-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
     .station-name { font-weight: 600; font-size: 14px; flex: 1; }
     .station-next { text-align: right; font-size: 12px; min-width: 80px; }
 
+    /* 城市切换弹窗 */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .modal-content { background: var(--card); width: 90%; max-width: 350px; border-radius: 16px; overflow: hidden; animation: pop 0.2s ease-out; }
+    @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-header { padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-weight: 800; }
     .city-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; text-decoration: none; color: inherit; border-bottom: 1px solid #f9f9f9; }
     .city-item:hover { background: #f3f4f6; }
     .city-item.active { border-left: 4px solid var(--tfl-blue); background: #f0f7ff; }
 
-    /* 线路颜色 */
+    /* TfL 线路颜色定义 */
     .border-bakerloo { border-left-color: #B36305; } .border-central { border-left-color: #E32017; }
     .border-circle { border-left-color: #FFD300; } .border-district { border-left-color: #00782A; }
     .border-hammersmith-city { border-left-color: #F3A9A2; } .border-jubilee { border-left-color: #A0A5A9; }
@@ -69,11 +74,35 @@
 <body>
   <div id="app-container">
     <header id="city-selector-trigger">
-      <div class="brand"><div><div class="title">Mind the Tube</div><div class="subtitle">切换城市 / Switch City</div></div></div>
-      <div class="roundel-wrap"><div class="roundel"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="36" stroke="#e60028" stroke-width="12" fill="white"></circle><rect x="6" y="40" width="88" height="20" rx="3" ry="3" fill="#0019A8"></rect></svg><div class="band"><div class="word">LONDON</div><div class="word">WASHINGTON</div><div class="word">NEW YORK</div><div class="word">TOKYO</div><div class="word">BEIJING</div></div></div></div>
+      <div class="brand">
+        <div>
+          <div class="title">Mind the Tube-伦敦</div>
+          <div class="subtitle">切换城市 / Switch City</div>
+        </div>
+      </div>
+      <div class="roundel-wrap">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="36" stroke="#e60028" stroke-width="12" fill="white"></circle>
+          <rect x="6" y="40" width="88" height="20" rx="3" ry="3" fill="#0019A8"></rect>
+        </svg>
+      </div>
     </header>
+
     <main><div id="status-container"></div></main>
-    <footer class="text-center text-xs text-gray-400 pb-4">开放数据来源于伦敦交通局(TfL) · 更新于: <span id="last-updated">--:--</span></footer>
+
+    <footer class="flex flex-col items-center gap-4 py-6">
+      <div class="text-center text-xs text-gray-400">
+        开放数据来源于TfL · 更新于: <span id="last-updated">--:--</span>
+      </div>
+      
+      <a href="https://github.com/Huaqing-chq/Mind-the-Tube" target="_blank" 
+         class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 hover:text-gray-700 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400 dark:hover:text-gray-200">
+        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+        </svg>
+        这是一个开放源代码的网站-GitHub 仓库
+      </a>
+    </footer>
   </div>
 
   <div id="city-modal" class="modal-overlay" style="display: none;">
@@ -99,7 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const STATUS_NAMES_ZH = {
-    "Good Service": "运行正常", "Minor Delays": "轻微延误", "Severe Delays": "严重延误", "Part Suspended": "部分停运", "Suspended": "全线停运", "Planned Closure": "计划关闭", "Part Closure": "部分关闭", "Service Closed": "停止服务"
+    "Good Service": "运行正常", "Minor Delays": "轻微延误", "Severe Delays": "严重延误", "Part Suspended": "部分停运", "Suspended": "全线停运", "Planned Closure": "计划封闭", "Part Closure": "部分封闭", "Service Closed": "停止服务"
   };
 
   const LINE_COLORS = {
@@ -171,15 +200,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (trains.length > 0) {
           const t = trains[0];
           const m = Math.round(t.timeToStation / 60);
+          const dest = (t.destinationName || "").replace(/ (Underground|Rail|DLR|Metro) Station/g, "");
           info = `<div class="font-bold text-blue-600">${m < 1 ? 'Due' : m + ' min'}</div>
-                  <div class="text-[10px] text-gray-400">${(t.destinationName || "").replace(/ (Underground|Rail|DLR) Station/g, "")}</div>`;
+                  <div class="text-[10px] text-gray-400">开往 ${dest}</div>`;
         }
-        
         const cleanStationName = stop.commonName.replace(/ Underground Station/g, "");
         row.innerHTML = `<div class="station-name">${cleanStationName}</div><div class="station-next">${info}</div>`;
         panel.appendChild(row);
       });
-    } catch (err) { panel.innerHTML = "暂时无法获取数据"; }
+    } catch (err) { panel.innerHTML = "暂时无法获取详情"; }
   }
 
   loadStatus();
