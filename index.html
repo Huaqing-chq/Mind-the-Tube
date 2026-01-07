@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Mind the Tube — 实时伦敦地铁状态</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -11,57 +11,56 @@
       --tfl-blue: #0019A8; --tfl-red: #e60028;
       --bg: #f3f4f6; --card: #ffffff; --muted: #6b7280;
     }
-    html, body { height: 100%; margin: 0; font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: #111827; }
+    html, body { height: 100%; margin: 0; font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: #111827; -webkit-tap-highlight-color: transparent; }
     #app-container { max-width: 960px; margin: 0 auto; padding: 18px; display: flex; flex-direction: column; min-height: 100vh; }
     
-    /* Header 交互 */
     header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 4px solid var(--tfl-red); cursor: pointer; }
     .brand { display: flex; align-items: center; gap: 12px; }
     .title { font-weight: 800; font-size: 20px; }
     .subtitle { font-size: 13px; color: var(--muted); }
-
     .roundel-wrap { width: 64px; height: 64px; flex-shrink: 0; }
 
-    /* 线路卡片 */
     main { flex: 1; padding: 18px 0; }
     #status-container { display: flex; flex-direction: column; gap: 12px; }
-    .line-card { background: var(--card); border-radius: 10px; padding: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 8px solid #333; cursor: pointer; transition: transform 0.1s; }
-    .line-card:active { transform: scale(0.98); }
+    
+    /* 线路卡片样式 */
+    .line-card { 
+      background: var(--card); border-radius: 10px; padding: 12px; 
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 8px solid #333; 
+      cursor: pointer; transition: transform 0.2s, background-color 0.2s;
+      user-select: none; -webkit-user-select: none; 
+    }
     .line-head { display: flex; align-items: center; justify-content: space-between; }
-    .line-title { font-weight: 700; font-size: 16px; }
+    .line-title { font-weight: 700; font-size: 16px; display: flex; align-items: center; }
     .status-chip { font-weight: 700; font-size: 11px; padding: 4px 10px; border-radius: 999px; }
     .status-good { background: #d1fae5; color: #065f46; }
     .status-minor { background: #fff7ed; color: #92400e; }
+    .tag-og { background: #EE7D3A; color: white; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 5px; }
     
     .line-reason { margin-top: 8px; font-size: 13px; color: #4b5563; line-height: 1.4; padding: 8px; background: rgba(0,0,0,0.03); border-radius: 6px; }
 
-    /* 站点详情 */
     .stations-panel { margin-top: 12px; padding: 8px; border-top: 1px solid #eee; }
     .station-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
     .station-name { font-weight: 600; font-size: 14px; flex: 1; }
     .station-next { text-align: right; font-size: 12px; min-width: 80px; }
 
-    /* 城市切换弹窗 */
+        /* 教程层 */
+    #tutorial-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.80); z-index: 2000;
+      display: flex; flex-direction: column; align-items: center; 
+      justify-content: flex-start; 
+      padding-top: 80px; 
+      color: white; text-align: center; backdrop-filter: blur(4px);
+    }
+
+
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .modal-content { background: var(--card); width: 90%; max-width: 350px; border-radius: 16px; overflow: hidden; animation: pop 0.2s ease-out; }
     @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-header { padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-weight: 800; }
     .city-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; text-decoration: none; color: inherit; border-bottom: 1px solid #f9f9f9; }
-    .city-item:hover { background: #f3f4f6; }
     .city-item.active { border-left: 4px solid var(--tfl-blue); background: #f0f7ff; }
-
-    /* TfL 线路颜色定义 */
-    .border-bakerloo { border-left-color: #B36305; } .border-central { border-left-color: #E32017; }
-    .border-circle { border-left-color: #FFD300; } .border-district { border-left-color: #00782A; }
-    .border-hammersmith-city { border-left-color: #F3A9A2; } .border-jubilee { border-left-color: #A0A5A9; }
-    .border-metropolitan { border-left-color: #9B0056; } .border-northern { border-left-color: #000000; }
-    .border-piccadilly { border-left-color: #003688; } .border-victoria { border-left-color: #0098D4; }
-    .border-waterloo-city { border-left-color: #99D1C9; } .border-elizabeth { border-left-color: #6950a1; }
-    .border-lioness { border-left-color: #ffca08; } .border-mildmay { border-left-color: #004296; }
-    .border-liberty { border-left-color: #61686b; } .border-weaver { border-left-color: #93338f; }
-    .border-suffragette { border-left-color: #1c8a43; } .border-windrush { border-left-color: #e91e24; }
-    .border-london-overground { border-left-color: #EE7D3A; }
-    .tag-og { background: #EE7D3A; color: white; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 5px; }
 
     @media (prefers-color-scheme: dark) {
       :root { --bg: #0f172a; --card: #1e293b; --muted: #94a3b8; }
@@ -94,13 +93,8 @@
       <div class="text-center text-xs text-gray-400">
         开放数据来源于TfL · 更新于: <span id="last-updated">--:--</span>
       </div>
-      
-      <a href="https://github.com/Huaqing-chq/Mind-the-Tube" target="_blank" 
-         class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 hover:text-gray-700 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400 dark:hover:text-gray-200">
-        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
-        </svg>
-        这是一个开放源代码的网站-GitHub 仓库
+      <a href="https://github.com/Huaqing-chq/Mind-the-Tube" target="_blank" class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 hover:text-gray-700 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400 dark:hover:text-gray-200">
+        本网站开放源代码 - GitHub 仓库
       </a>
     </footer>
   </div>
@@ -123,8 +117,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("city-modal");
   const stationCache = {};
 
+  // 完整的中文名称映射
   const LINE_NAMES_ZH = {
-    "bakerloo": "贝克卢线", "central": "中央线", "circle": "环线", "district": "区域线", "hammersmith-city": "哈默史密斯及城市线", "jubilee": "银禧线", "metropolitan": "大都会线", "northern": "北线", "piccadilly": "皮卡迪利线", "victoria": "维多利亚线", "waterloo-city": "滑铁卢及城市线", "elizabeth": "伊丽莎白线", "liberty": "自由线", "suffragette": "妇政线", "lioness": "雌狮线", "mildmay": "米尔德梅线", "weaver": "纺织工线", "windrush": "温德鲁什线", "london-overground": "伦敦地上铁"
+    "bakerloo": "贝克卢线", "central": "中央线", "circle": "环线", "district": "区域线", 
+    "hammersmith-city": "哈默史密斯及城市线", "jubilee": "银禧线", "metropolitan": "大都会线", 
+    "northern": "北线", "piccadilly": "皮卡迪利线", "victoria": "维多利亚线", 
+    "waterloo-city": "滑铁卢及城市线", "elizabeth": "伊丽莎白线", "london-overground": "伦敦地上铁",
+    "liberty": "自由线", "suffragette": "妇政线", "lioness": "雌狮线", "mildmay": "米尔德梅线", 
+    "weaver": "纺织工线", "windrush": "温德鲁什线"
   };
 
   const STATUS_NAMES_ZH = {
@@ -134,6 +134,47 @@ document.addEventListener("DOMContentLoaded", () => {
   const LINE_COLORS = {
     bakerloo: "#B36305", central: "#E32017", circle: "#FFD300", district: "#00782A", "hammersmith-city": "#F3A9A2", jubilee: "#A0A5A9", metropolitan: "#9B0056", northern: "#000000", piccadilly: "#003688", victoria: "#0098D4", "waterloo-city": "#99D1C9", elizabeth: "#6950a1", lioness: "#ffca08", mildmay: "#004296", liberty: "#61686b", weaver: "#93338f", suffragette: "#1c8a43", windrush: "#e91e24", "london-overground": "#EE7D3A"
   };
+
+  const WIKI_MAP = {
+    "bakerloo": "https://zh.wikipedia.org/wiki/貝克盧線",
+    "central": "https://zh.wikipedia.org/wiki/中央線_(倫敦地鐵)",
+    "circle": "https://zh.wikipedia.org/wiki/環線_(倫敦地鐵)",
+    "district": "https://zh.wikipedia.org/wiki/區域線",
+    "hammersmith-city": "https://zh.wikipedia.org/wiki/哈默史密斯及城市線",
+    "jubilee": "https://zh.wikipedia.org/wiki/銀禧線",
+    "metropolitan": "https://zh.wikipedia.org/wiki/大都會線",
+    "northern": "https://zh.wikipedia.org/wiki/北線",
+    "piccadilly": "https://zh.wikipedia.org/wiki/皮卡迪利線",
+    "victoria": "https://zh.wikipedia.org/wiki/維多利亞線",
+    "waterloo-city": "https://zh.wikipedia.org/wiki/滑鐵盧及城市線",
+    "elizabeth": "https://zh.wikipedia.org/wiki/伊利沙伯線",
+    "london-overground": "https://zh.wikipedia.org/wiki/倫敦地上鐵"
+  };
+
+    function initTutorial() {
+    if (localStorage.getItem('mtt-tutorial-done')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'tutorial-overlay';
+    overlay.innerHTML = `
+      <div class="tutorial-step" style="margin-bottom: 15vh;">
+        <span class="hand-icon">👆</span>
+        <p class="font-bold">点击顶部切换城市</p>
+      </div>
+      
+      <div class="tutorial-step">
+        <span class="hand-icon long-press-anim">👆</span>
+        <p class="font-bold">长按线路名查看百科详情</p>
+      </div>
+      
+      <button id="close-tuto" class="mt-8 px-8 py-2 border-2 border-white rounded-full font-bold">开始使用</button>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('close-tuto').onclick = () => {
+      overlay.remove();
+      localStorage.setItem('mtt-tutorial-done', 'true');
+    };
+  }
+
 
   document.getElementById("city-selector-trigger").onclick = () => modal.style.display = "flex";
   document.getElementById("close-modal").onclick = (e) => { e.stopPropagation(); modal.style.display = "none"; };
@@ -156,6 +197,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const statusRaw = statusObj.statusSeverityDescription;
       const statusZH = STATUS_NAMES_ZH[statusRaw] || statusRaw;
       const reason = statusObj.reason;
+      
+      // 判定是否属于 Overground 家族并显示 OG 标签
       const isOg = id === "london-overground" || ["liberty","suffragette","lioness","mildmay","weaver","windrush"].includes(id);
       
       const card = document.createElement("div");
@@ -163,12 +206,45 @@ document.addEventListener("DOMContentLoaded", () => {
       card.style.borderLeftColor = LINE_COLORS[id] || "#333";
       card.innerHTML = `
         <div class="line-head">
-          <div class="line-title">${LINE_NAMES_ZH[id] || line.name}${isOg ? '<span class="tag-og">OG</span>' : ''}</div>
+          <div class="line-title">
+            ${LINE_NAMES_ZH[id] || line.name}
+            ${isOg ? '<span class="tag-og">OG</span>' : ''}
+          </div>
           <div class="status-chip ${statusRaw.toLowerCase().includes('good') ? 'status-good' : 'status-minor'}">${statusZH}</div>
         </div>
         ${reason ? `<div class="line-reason">${reason}</div>` : ""}
       `;
-      card.onclick = () => toggleStations(id, card);
+
+      let pressTimer;
+      let isLongPress = false;
+
+      const startPress = (e) => {
+        isLongPress = false;
+        card.style.transform = "scale(0.96)";
+        card.style.backgroundColor = "rgba(0,0,0,0.05)";
+        pressTimer = setTimeout(() => {
+          isLongPress = true;
+          if (window.navigator.vibrate) window.navigator.vibrate(60);
+          const wiki = WIKI_MAP[id] || `https://en.wikipedia.org/wiki/${line.name}_line`;
+          window.open(wiki, '_blank');
+          cancelPress();
+        }, 650);
+      };
+
+      const cancelPress = () => {
+        clearTimeout(pressTimer);
+        card.style.transform = "scale(1)";
+        card.style.backgroundColor = "";
+      };
+
+      card.addEventListener("touchstart", startPress, {passive: true});
+      card.addEventListener("touchend", (e) => { if (isLongPress) e.preventDefault(); cancelPress(); });
+      card.addEventListener("mousedown", startPress);
+      card.addEventListener("mouseup", cancelPress);
+      card.addEventListener("mouseleave", cancelPress);
+
+      card.onclick = () => { if (!isLongPress) toggleStations(id, card); };
+
       statusContainer.appendChild(card);
     });
   }
@@ -176,22 +252,18 @@ document.addEventListener("DOMContentLoaded", () => {
   async function toggleStations(lineId, cardEl) {
     let panel = cardEl.querySelector(".stations-panel");
     if (panel) { panel.remove(); return; }
-
     panel = document.createElement("div");
     panel.className = "stations-panel";
     panel.innerHTML = `<div class="text-xs text-gray-400 animate-pulse">正在获取到站信息...</div>`;
     cardEl.appendChild(panel);
-
     try {
       const p1 = stationCache[lineId] ? Promise.resolve(stationCache[lineId]) : 
                  fetch(`${API_BASE}/Line/${lineId}/StopPoints`).then(r => r.json()).then(d => stationCache[lineId] = d.filter(s => s.commonName));
       const p2 = fetch(`${API_BASE}/Line/${lineId}/Arrivals`).then(r => r.json());
       const [stations, arrivals] = await Promise.all([p1, p2]);
-      
       panel.innerHTML = "";
       const arrivalMap = {};
       arrivals.forEach(a => { if(!arrivalMap[a.naptanId]) arrivalMap[a.naptanId] = []; arrivalMap[a.naptanId].push(a); });
-
       stations.forEach(stop => {
         const trains = (arrivalMap[stop.id] || []).sort((a,b) => a.timeToStation - b.timeToStation);
         const row = document.createElement("div");
@@ -201,8 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const t = trains[0];
           const m = Math.round(t.timeToStation / 60);
           const dest = (t.destinationName || "").replace(/ (Underground|Rail|DLR|Metro) Station/g, "");
-          info = `<div class="font-bold text-blue-600">${m < 1 ? 'Due' : m + ' min'}</div>
-                  <div class="text-[10px] text-gray-400">开往 ${dest}</div>`;
+          info = `<div class="font-bold text-blue-600">${m < 1 ? 'Due' : m + ' min'}</div><div class="text-[10px] text-gray-400">开往 ${dest}</div>`;
         }
         const cleanStationName = stop.commonName.replace(/ Underground Station/g, "");
         row.innerHTML = `<div class="station-name">${cleanStationName}</div><div class="station-next">${info}</div>`;
@@ -212,6 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   loadStatus();
+  initTutorial();
   setInterval(loadStatus, 60000);
 });
 </script>
