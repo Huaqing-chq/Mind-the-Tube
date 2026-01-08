@@ -23,7 +23,6 @@
     main { flex: 1; padding: 18px 0; }
     #status-container { display: flex; flex-direction: column; gap: 12px; }
     
-    /* 线路卡片样式 */
     .line-card { 
       background: var(--card); border-radius: 10px; padding: 12px; 
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 8px solid #333; 
@@ -44,7 +43,6 @@
     .station-name { font-weight: 600; font-size: 14px; flex: 1; }
     .station-next { text-align: right; font-size: 12px; min-width: 80px; }
 
-        /* 教程层 */
     #tutorial-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.80); z-index: 2000;
@@ -53,7 +51,6 @@
       padding-top: 80px; 
       color: white; text-align: center; backdrop-filter: blur(4px);
     }
-
 
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .modal-content { background: var(--card); width: 90%; max-width: 350px; border-radius: 16px; overflow: hidden; animation: pop 0.2s ease-out; }
@@ -93,8 +90,19 @@
       <div class="text-center text-xs text-gray-400">
         开放数据来源于TfL · 更新于: <span id="last-updated">--:--</span>
       </div>
-      <a href="https://github.com/Huaqing-chq/Mind-the-Tube" target="_blank" class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 hover:text-gray-700 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400 dark:hover:text-gray-200">
-        本网站开放源代码 - GitHub 仓库
+      
+      <div class="flex items-center gap-3">
+        <div id="api-health" class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 rounded-full shadow-sm dark:bg-slate-800 dark:border-slate-700 transition-all">
+          <span id="api-dot" class="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></span>
+          <span id="api-text" class="text-gray-500 dark:text-gray-400">API 状态检查中</span>
+        </div>
+
+      <a href="https://github.com/Huaqing-chq/Mind-the-Tube" target="_blank" 
+         class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 hover:text-gray-700 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400 dark:hover:text-gray-200">
+        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+        </svg>
+        这是一个开放源代码的网站
       </a>
     </footer>
   </div>
@@ -117,7 +125,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("city-modal");
   const stationCache = {};
 
-  // 完整的中文名称映射
   const LINE_NAMES_ZH = {
     "bakerloo": "贝克卢线", "central": "中央线", "circle": "环线", "district": "区域线", 
     "hammersmith-city": "哈默史密斯及城市线", "jubilee": "银禧线", "metropolitan": "大都会线", 
@@ -136,57 +143,49 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const WIKI_MAP = {
-    "bakerloo": "https://zh.wikipedia.org/wiki/貝克盧線",
-    "central": "https://zh.wikipedia.org/wiki/中央線_(倫敦地鐵)",
-    "circle": "https://zh.wikipedia.org/wiki/環線_(倫敦地鐵)",
-    "district": "https://zh.wikipedia.org/wiki/區域線",
-    "hammersmith-city": "https://zh.wikipedia.org/wiki/哈默史密斯及城市線",
-    "jubilee": "https://zh.wikipedia.org/wiki/銀禧線",
-    "metropolitan": "https://zh.wikipedia.org/wiki/大都會線",
-    "northern": "https://zh.wikipedia.org/wiki/北線",
-    "piccadilly": "https://zh.wikipedia.org/wiki/皮卡迪利線",
-    "victoria": "https://zh.wikipedia.org/wiki/維多利亞線",
-    "waterloo-city": "https://zh.wikipedia.org/wiki/滑鐵盧及城市線",
-    "elizabeth": "https://zh.wikipedia.org/wiki/伊利沙伯線",
-    "london-overground": "https://zh.wikipedia.org/wiki/倫敦地上鐵"
+    "bakerloo": "https://zh.wikipedia.org/wiki/貝克盧線", "central": "https://zh.wikipedia.org/wiki/中央線_(倫敦地鐵)", "circle": "https://zh.wikipedia.org/wiki/環線_(倫敦地鐵)", "district": "https://zh.wikipedia.org/wiki/區域線", "hammersmith-city": "https://zh.wikipedia.org/wiki/哈默史密斯及城市線", "jubilee": "https://zh.wikipedia.org/wiki/銀禧線", "metropolitan": "https://zh.wikipedia.org/wiki/大都會線", "northern": "https://zh.wikipedia.org/wiki/北線", "piccadilly": "https://zh.wikipedia.org/wiki/皮卡迪利線", "victoria": "https://zh.wikipedia.org/wiki/維多利亞線", "waterloo-city": "https://zh.wikipedia.org/wiki/滑鐵盧及城市線", "elizabeth": "https://zh.wikipedia.org/wiki/伊利沙伯線", "london-overground": "https://zh.wikipedia.org/wiki/倫敦地上鐵"
   };
 
-    function initTutorial() {
+  function updateApiStatus(status) {
+    const dot = document.getElementById("api-dot");
+    const text = document.getElementById("api-text");
+    dot.classList.remove('animate-pulse');
+    if (status === 'ok') {
+      dot.className = "w-2 h-2 rounded-full bg-green-500";
+      text.textContent = "API 状态正常";
+    } else {
+      dot.className = "w-2 h-2 rounded-full bg-red-500";
+      text.textContent = "API 服务异常 - 问题报告已发送";
+    }
+  }
+
+  function initTutorial() {
     if (localStorage.getItem('mtt-tutorial-done')) return;
     const overlay = document.createElement('div');
     overlay.id = 'tutorial-overlay';
-    overlay.innerHTML = `
-      <div class="tutorial-step" style="margin-bottom: 15vh;">
-        <span class="hand-icon">👆</span>
-        <p class="font-bold">点击顶部切换城市</p>
-      </div>
-      
-      <div class="tutorial-step">
-        <span class="hand-icon long-press-anim">👆</span>
-        <p class="font-bold">长按线路名查看百科详情</p>
-      </div>
-      
-      <button id="close-tuto" class="mt-8 px-8 py-2 border-2 border-white rounded-full font-bold">开始使用</button>
-    `;
+    overlay.innerHTML = `<div class="tutorial-step" style="margin-bottom: 15vh;"><span class="hand-icon">👆</span><p class="font-bold">点击顶部切换城市</p></div><div class="tutorial-step"><span class="hand-icon long-press-anim">👆</span><p class="font-bold">长按线路名查看百科详情</p></div><button id="close-tuto" class="mt-8 px-8 py-2 border-2 border-white rounded-full font-bold">开始使用</button>`;
     document.body.appendChild(overlay);
-    document.getElementById('close-tuto').onclick = () => {
-      overlay.remove();
-      localStorage.setItem('mtt-tutorial-done', 'true');
-    };
+    document.getElementById('close-tuto').onclick = () => { overlay.remove(); localStorage.setItem('mtt-tutorial-done', 'true'); };
   }
-
 
   document.getElementById("city-selector-trigger").onclick = () => modal.style.display = "flex";
   document.getElementById("close-modal").onclick = (e) => { e.stopPropagation(); modal.style.display = "none"; };
-  window.onclick = (e) => { if(e.target == modal) modal.style.display = "none"; };
 
   async function loadStatus() {
     try {
       const res = await fetch(`${API_BASE}/Line/Mode/tube,overground,elizabeth-line/Status`);
-      const lines = await res.json();
-      render(lines);
-      lastUpdated.textContent = new Date().toLocaleTimeString();
-    } catch (e) { statusContainer.innerHTML = "加载失败"; }
+      if (res.ok) {
+        updateApiStatus('ok');
+        const lines = await res.json();
+        render(lines);
+        lastUpdated.textContent = new Date().toLocaleTimeString();
+      } else {
+        updateApiStatus('error');
+      }
+    } catch (e) { 
+      updateApiStatus('error');
+      statusContainer.innerHTML = "加载失败，请检查网络"; 
+    }
   }
 
   function render(lines) {
@@ -197,8 +196,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const statusRaw = statusObj.statusSeverityDescription;
       const statusZH = STATUS_NAMES_ZH[statusRaw] || statusRaw;
       const reason = statusObj.reason;
-      
-      // 判定是否属于 Overground 家族并显示 OG 标签
       const isOg = id === "london-overground" || ["liberty","suffragette","lioness","mildmay","weaver","windrush"].includes(id);
       
       const card = document.createElement("div");
@@ -206,10 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
       card.style.borderLeftColor = LINE_COLORS[id] || "#333";
       card.innerHTML = `
         <div class="line-head">
-          <div class="line-title">
-            ${LINE_NAMES_ZH[id] || line.name}
-            ${isOg ? '<span class="tag-og">OG</span>' : ''}
-          </div>
+          <div class="line-title">${LINE_NAMES_ZH[id] || line.name}${isOg ? '<span class="tag-og">OG</span>' : ''}</div>
           <div class="status-chip ${statusRaw.toLowerCase().includes('good') ? 'status-good' : 'status-minor'}">${statusZH}</div>
         </div>
         ${reason ? `<div class="line-reason">${reason}</div>` : ""}
@@ -217,34 +211,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
       let pressTimer;
       let isLongPress = false;
-
-      const startPress = (e) => {
+      const startPress = () => {
         isLongPress = false;
         card.style.transform = "scale(0.96)";
-        card.style.backgroundColor = "rgba(0,0,0,0.05)";
         pressTimer = setTimeout(() => {
           isLongPress = true;
-          if (window.navigator.vibrate) window.navigator.vibrate(60);
-          const wiki = WIKI_MAP[id] || `https://en.wikipedia.org/wiki/${line.name}_line`;
-          window.open(wiki, '_blank');
-          cancelPress();
+          window.open(WIKI_MAP[id] || `https://en.wikipedia.org/wiki/${line.name}_line`, '_blank');
         }, 650);
       };
-
-      const cancelPress = () => {
-        clearTimeout(pressTimer);
-        card.style.transform = "scale(1)";
-        card.style.backgroundColor = "";
-      };
+      const cancelPress = () => { clearTimeout(pressTimer); card.style.transform = "scale(1)"; };
 
       card.addEventListener("touchstart", startPress, {passive: true});
-      card.addEventListener("touchend", (e) => { if (isLongPress) e.preventDefault(); cancelPress(); });
+      card.addEventListener("touchend", cancelPress);
       card.addEventListener("mousedown", startPress);
       card.addEventListener("mouseup", cancelPress);
-      card.addEventListener("mouseleave", cancelPress);
-
       card.onclick = () => { if (!isLongPress) toggleStations(id, card); };
-
       statusContainer.appendChild(card);
     });
   }
@@ -257,8 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
     panel.innerHTML = `<div class="text-xs text-gray-400 animate-pulse">正在获取到站信息...</div>`;
     cardEl.appendChild(panel);
     try {
-      const p1 = stationCache[lineId] ? Promise.resolve(stationCache[lineId]) : 
-                 fetch(`${API_BASE}/Line/${lineId}/StopPoints`).then(r => r.json()).then(d => stationCache[lineId] = d.filter(s => s.commonName));
+      const p1 = stationCache[lineId] ? Promise.resolve(stationCache[lineId]) : fetch(`${API_BASE}/Line/${lineId}/StopPoints`).then(r => r.json()).then(d => stationCache[lineId] = d.filter(s => s.commonName));
       const p2 = fetch(`${API_BASE}/Line/${lineId}/Arrivals`).then(r => r.json());
       const [stations, arrivals] = await Promise.all([p1, p2]);
       panel.innerHTML = "";
@@ -272,11 +252,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (trains.length > 0) {
           const t = trains[0];
           const m = Math.round(t.timeToStation / 60);
-          const dest = (t.destinationName || "").replace(/ (Underground|Rail|DLR|Metro) Station/g, "");
-          info = `<div class="font-bold text-blue-600">${m < 1 ? 'Due' : m + ' min'}</div><div class="text-[10px] text-gray-400">开往 ${dest}</div>`;
+          info = `<div class="font-bold text-blue-600">${m < 1 ? 'Due' : m + ' min'}</div><div class="text-[10px] text-gray-400">开往 ${t.destinationName.replace(/ Station/g, "")}</div>`;
         }
-        const cleanStationName = stop.commonName.replace(/ Underground Station/g, "");
-        row.innerHTML = `<div class="station-name">${cleanStationName}</div><div class="station-next">${info}</div>`;
+        row.innerHTML = `<div class="station-name">${stop.commonName.replace(/ Underground Station/g, "")}</div><div class="station-next">${info}</div>`;
         panel.appendChild(row);
       });
     } catch (err) { panel.innerHTML = "暂时无法获取详情"; }
